@@ -1,0 +1,43 @@
+[
+  {
+    title : '@@startProcess.startProcessTool@@',
+    properties : [
+      {
+        name : 'processDefId',
+        label : '@@startProcess.processDefId@@',
+        type : 'selectbox',
+        required : 'true',
+        options_ajax : '[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions'
+      },
+      {
+        name : 'loginAs',
+        label : '@@startProcess.loginAs@@',
+        type : 'textfield'
+      },
+      {
+        name : 'workflowVariables',
+        label : '@@startProcess.workflowVariables@@',
+        type : 'grid',
+        columns : [
+          {
+            key : 'variable',
+            label : '@@startProcess.variable@@',
+            required : 'true'
+          },{
+            key : 'value',
+            label : '@@startProcess.value@@'
+          }
+        ]
+      },
+      {
+        label : '@@startProcess.result@@',
+        type : 'header'
+      },
+      {
+        name : 'resultProcessId',
+        label : '@@startProcess.resultProcessId@@',
+        type : 'textfield'
+      }
+    ]
+  }
+]
