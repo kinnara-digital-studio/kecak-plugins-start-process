@@ -3,11 +3,19 @@
     title : '@@startProcess.startProcessTool@@',
     properties : [
       {
-        name : 'processDefId',
-        label : '@@startProcess.processDefId@@',
+        name : 'appId',
+        label : '@@startProcess.appId@@',
         type : 'selectbox',
         required : 'true',
-        options_ajax : '[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions'
+        options_ajax : '[CONTEXT_PATH]/web/json/plugin/%s/service?action=apps'
+      },
+      {
+        name : 'processId',
+        label : '@@startProcess.processId@@',
+        type : 'selectbox',
+        required : 'true',
+        options_ajax_on_change : 'appId',
+        options_ajax : '[CONTEXT_PATH]/web/json/plugin/%s/service?action=processes'
       },
       {
         name : 'loginAs',
