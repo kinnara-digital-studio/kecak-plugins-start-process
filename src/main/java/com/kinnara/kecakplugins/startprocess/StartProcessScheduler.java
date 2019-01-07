@@ -2,14 +2,13 @@ package com.kinnara.kecakplugins.startprocess;
 
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
+import org.joget.apps.app.model.DefaultSchedulerPlugin;
 import org.joget.apps.app.model.PackageDefinition;
-import org.joget.apps.app.service.AppPluginUtil;
+import org.joget.apps.app.model.SchedulerPlugin;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.LogUtil;
-import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.plugin.base.PluginWebSupport;
-import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
@@ -18,16 +17,17 @@ import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
 import org.springframework.context.ApplicationContext;
 
+import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.*;
 
-public class StartProcessTool extends DefaultApplicationPlugin implements PluginWebSupport {
+public class StartProcessScheduler extends DefaultSchedulerPlugin implements PluginWebSupport {
     @Override
     public String getName() {
-        return AppPluginUtil.getMessage("startProcess.startProcessTool", getClassName(), "/messages/StartProcess");
+        return "Start Process Scheduler";
     }
 
     @Override
@@ -38,30 +38,6 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
     @Override
     public String getDescription() {
         return getClass().getPackage().getImplementationTitle();
-    }
-
-    @Override
-    public Object execute(Map map) {
-        AppDefinition appDefinition = (AppDefinition) map.get("appDef");
-        WorkflowAssignment workflowAssignment = (WorkflowAssignment) map.get("workflowAssignment");
-        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
-        String processDefId = AppUtil.getProcessDefIdWithVersion(appDefinition.getAppId(), appDefinition.getVersion().toString(), map.get("processId").toString());
-        Map<String, String> workflowVariables = Arrays.stream(((Object[]) map.get("workflowVariables")))
-                .map(o -> (Map<String, Object>)o)
-                .collect(HashMap::new, (m, o) -> m.put(o.get("variable").toString(), o.get("value").toString()), Map::putAll);
-
-        String loginAs = map.get("loginAs") == null || map.get("loginAs").toString().isEmpty() ? "" : map.get("loginAs").toString();
-
-        // get result and set process id
-        WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
-
-        if(result == null || result.getProcess() == null) {
-            LogUtil.warn(getClassName(), "Error starting process ["+processDefId+"]");
-        } else {
-            workflowManager.processVariable(workflowAssignment.getProcessId(), map.get("resultProcessId").toString(), result.getProcess().getInstanceId());
-        }
-
-        return null;
     }
 
     @Override
@@ -77,6 +53,36 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
     @Override
     public String getPropertyOptions() {
         return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessTool.json", new String[] {getClassName(), getClassName()}, false, "/messages/StartProcess");
+    }
+
+    @Override
+    public boolean filter(Map<String, Object> properties) {
+        Date fireTime = (Date) properties.get(SchedulerPlugin.PROPERTY_TIMESTAMP);
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTime(fireTime);
+//        return calendar.get(Calendar.MINUTE) % 2 == 0;
+        return true;
+    }
+
+    @Override
+    public void jobRun(@Nonnull Map<String, Object> properties) {
+        AppDefinition appDefinition = (AppDefinition) properties.get("appDefinition");
+        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+        String processDefId = AppUtil.getProcessDefIdWithVersion(appDefinition.getAppId(), appDefinition.getVersion().toString(), properties.get("processId").toString());
+        Map<String, String> workflowVariables = Arrays.stream(((Object[]) properties.get("workflowVariables")))
+                .map(o -> (Map<String, Object>)o)
+                .collect(HashMap::new, (m, o) -> m.put(o.get("variable").toString(), o.get("value").toString()), Map::putAll);
+
+        String loginAs = properties.get("loginAs") == null || properties.get("loginAs").toString().isEmpty() ? "" : properties.get("loginAs").toString();
+
+        // get result and set process id
+        WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
+
+        if(result == null || result.getProcess() == null) {
+            LogUtil.warn(getClassName(), "Error starting process ["+processDefId+"]");
+        } else if (!properties.get("resultProcessId").toString().isEmpty()){
+            workflowManager.processVariable(result.getProcess().getInstanceId(), properties.get("resultProcessId").toString(), result.getProcess().getInstanceId());
+        }
     }
 
     @Override
