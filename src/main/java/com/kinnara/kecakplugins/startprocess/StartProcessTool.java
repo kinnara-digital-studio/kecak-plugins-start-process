@@ -9,7 +9,6 @@ import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.plugin.base.PluginWebSupport;
-import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
@@ -22,7 +21,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class StartProcessTool extends DefaultApplicationPlugin implements PluginWebSupport {
     @Override
@@ -42,10 +44,16 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
 
     @Override
     public Object execute(Map map) {
-        AppDefinition appDefinition = (AppDefinition) map.get("appDef");
-        WorkflowAssignment workflowAssignment = (WorkflowAssignment) map.get("workflowAssignment");
+        AppDefinitionDao appDefinitionDao = (AppDefinitionDao) AppUtil.getApplicationContext().getBean("appDefinitionDao");
         WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
-        String processDefId = AppUtil.getProcessDefIdWithVersion(appDefinition.getAppId(), appDefinition.getVersion().toString(), map.get("processId").toString());
+
+        String appId = String.valueOf(map.get("appId"));
+
+        Long appVersion = appDefinitionDao.getPublishedVersion(appId);
+        if(appVersion == null)
+            appVersion = appDefinitionDao.getLatestVersion("appId");
+
+        String processDefId = AppUtil.getProcessDefIdWithVersion(appId, appVersion.toString(), map.get("processId").toString());
         Map<String, String> workflowVariables = Arrays.stream(((Object[]) map.get("workflowVariables")))
                 .map(o -> (Map<String, Object>)o)
                 .collect(HashMap::new, (m, o) -> m.put(o.get("variable").toString(), o.get("value").toString()), Map::putAll);
@@ -57,8 +65,8 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
 
         if(result == null || result.getProcess() == null) {
             LogUtil.warn(getClassName(), "Error starting process ["+processDefId+"]");
-        } else {
-            workflowManager.processVariable(workflowAssignment.getProcessId(), map.get("resultProcessId").toString(), result.getProcess().getInstanceId());
+        } else if(!map.get("resultProcessId").toString().isEmpty()) {
+            workflowManager.processVariable(result.getProcess().getInstanceId(), map.get("resultProcessId").toString(), result.getProcess().getInstanceId());
         }
 
         return null;
