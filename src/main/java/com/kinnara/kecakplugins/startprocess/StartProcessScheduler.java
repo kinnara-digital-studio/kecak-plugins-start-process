@@ -2,9 +2,7 @@ package com.kinnara.kecakplugins.startprocess;
 
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
-import org.joget.apps.app.model.DefaultSchedulerPlugin;
 import org.joget.apps.app.model.PackageDefinition;
-import org.joget.apps.app.model.SchedulerPlugin;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.LogUtil;
@@ -15,6 +13,8 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.model.service.WorkflowUserManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
+import org.kecak.apps.app.model.DefaultSchedulerPlugin;
+import org.quartz.JobExecutionContext;
 import org.springframework.context.ApplicationContext;
 
 import javax.annotation.Nonnull;
@@ -22,7 +22,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class StartProcessScheduler extends DefaultSchedulerPlugin implements PluginWebSupport {
     @Override
@@ -56,16 +59,13 @@ public class StartProcessScheduler extends DefaultSchedulerPlugin implements Plu
     }
 
     @Override
-    public boolean filter(Map<String, Object> properties) {
-        Date fireTime = (Date) properties.get(SchedulerPlugin.PROPERTY_TIMESTAMP);
-        final Calendar calendar = Calendar.getInstance();
-        calendar.setTime(fireTime);
-//        return calendar.get(Calendar.MINUTE) % 2 == 0;
+    public boolean filter(JobExecutionContext context, Map<String, Object> properties) {
+        LogUtil.info(getClassName(), "["+context.getFireTime()+"] ["+context.getScheduledFireTime()+"]");
         return true;
     }
 
     @Override
-    public void jobRun(@Nonnull Map<String, Object> properties) {
+    public void jobRun(@Nonnull JobExecutionContext context, @Nonnull Map<String, Object> properties) {
         AppDefinition appDefinition = (AppDefinition) properties.get("appDefinition");
         WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
         String processDefId = AppUtil.getProcessDefIdWithVersion(appDefinition.getAppId(), appDefinition.getVersion().toString(), properties.get("processId").toString());
