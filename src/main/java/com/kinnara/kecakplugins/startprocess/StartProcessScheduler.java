@@ -68,7 +68,7 @@ public class StartProcessScheduler extends DefaultSchedulerPlugin implements Plu
     public void jobRun(@Nonnull JobExecutionContext context, @Nonnull Map<String, Object> properties) {
         AppDefinition appDefinition = (AppDefinition) properties.get("appDefinition");
         WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
-        String processDefId = AppUtil.getProcessDefIdWithVersion(appDefinition.getAppId(), appDefinition.getVersion().toString(), properties.get("processId").toString());
+        String processDefId = AppUtil.getProcessDefIdWithVersion(appDefinition.getAppId(), appDefinition.getPackageDefinition().getVersion().toString(), properties.get("processId").toString());
         Map<String, String> workflowVariables = Arrays.stream(((Object[]) properties.get("workflowVariables")))
                 .map(o -> (Map<String, Object>)o)
                 .collect(HashMap::new, (m, o) -> m.put(o.get("variable").toString(), o.get("value").toString()), Map::putAll);
