@@ -44,6 +44,7 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
 
     @Override
     public Object execute(Map map) {
+        AppService appService = (AppService) AppUtil.getApplicationContext().getBean("appService");
         AppDefinitionDao appDefinitionDao = (AppDefinitionDao) AppUtil.getApplicationContext().getBean("appDefinitionDao");
         WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
 
@@ -53,7 +54,10 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
         if(appVersion == null)
             appVersion = appDefinitionDao.getLatestVersion("appId");
 
-        String processDefId = AppUtil.getProcessDefIdWithVersion(appId, appVersion.toString(), map.get("processId").toString());
+        AppDefinition appDefinition = appService.getAppDefinition(appId, String.valueOf(appVersion));
+        PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
+
+        String processDefId = AppUtil.getProcessDefIdWithVersion(packageDefinition.getAppId(), packageDefinition.getVersion().toString(), map.get("processId").toString());
         Map<String, String> workflowVariables = Arrays.stream(((Object[]) map.get("workflowVariables")))
                 .map(o -> (Map<String, Object>)o)
                 .collect(HashMap::new, (m, o) -> m.put(o.get("variable").toString(), o.get("value").toString()), Map::putAll);
