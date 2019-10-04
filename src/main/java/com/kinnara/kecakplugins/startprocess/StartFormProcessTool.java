@@ -25,7 +25,7 @@ import java.util.Objects;
 public class StartFormProcessTool extends DefaultApplicationPlugin {
     @Override
     public String getName() {
-        return AppPluginUtil.getMessage("startProcess.startProcessTool", getClassName(), "/messages/StartProcess");
+        return "Start Form Process Tool";
     }
 
     @Override

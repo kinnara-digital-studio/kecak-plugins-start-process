@@ -1,6 +1,6 @@
 [
   {
-    "title" : "@@startProcess.startProcessTool@@",
+    "title" : "Edit @@startProcess.startProcessScheduler@@",
     "properties" : [
       {
         "name" : "appId",
@@ -45,6 +45,17 @@
         "name" : "resultProcessId",
         "label" : "@@startProcess.resultProcessId@@",
         "type" : "textfield"
+      }
+    ]
+  },
+  {
+    "title" : "@@startProcess.runSchedule@@",
+    "properties" : [
+      {
+        "name": "runScheduleTime",
+        "label": "@@startProcess.runScheduleTime@@",
+        "type": "multiselect",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/plugin/%s/service?action=scheduleTime"
       }
     ]
   }

@@ -1,5 +1,6 @@
 package com.kinnara.kecakplugins.startprocess;
 
+import org.joda.time.DateTime;
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.PackageDefinition;
@@ -13,6 +14,8 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.model.service.WorkflowUserManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.kecak.apps.app.model.DefaultSchedulerPlugin;
 import org.quartz.JobExecutionContext;
 import org.springframework.context.ApplicationContext;
@@ -22,12 +25,16 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Stream;
 
 public class StartProcessScheduler extends DefaultSchedulerPlugin implements PluginWebSupport {
+    private final DateFormat TIME_FORMAT = new SimpleDateFormat("hh:MM");
+
+
     @Override
     public String getName() {
         return "Start Process Scheduler";
@@ -55,13 +62,30 @@ public class StartProcessScheduler extends DefaultSchedulerPlugin implements Plu
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessTool.json", new String[] {getClassName(), getClassName()}, false, "/messages/StartProcess");
+        return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessScheduler.json", new String[] {getClassName(), getClassName(), getClassName()}, false, "/messages/StartProcess");
     }
 
     @Override
     public boolean filter(JobExecutionContext context, Map<String, Object> properties) {
+        final Date scheduledFireTime = context.getScheduledFireTime();
         LogUtil.info(getClassName(), "["+context.getFireTime()+"] ["+context.getScheduledFireTime()+"]");
-        return true;
+        return Optional.ofNullable(getPropertyString("runScheduleTime"))
+                .map(s -> s.split(";"))
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .map(this::parseTime)
+                .filter(Objects::nonNull)
+                .map(d -> (d.getTime() - scheduledFireTime.getTime()) / (60 * 1000))
+                .peek(l -> LogUtil.info(getClassName(), "Diff ["+l+"]"))
+                .anyMatch(l -> l == 0);
+    }
+
+    private Date parseTime(String time) {
+        try {
+            return TIME_FORMAT.parse(time);
+        } catch (ParseException e) {
+            return null;
+        }
     }
 
     @Override
@@ -148,6 +172,26 @@ public class StartProcessScheduler extends DefaultSchedulerPlugin implements Plu
                 jsonArray.write(response.getWriter());
             } catch (Exception ex) {
                 LogUtil.error(this.getClass().getName(), ex, "Get Run Process's options Error!");
+            }
+        } else if("scheduleTime".equalsIgnoreCase(action)) {
+            JSONArray jsonArray = new JSONArray();
+            for(int i = 0; i < 24;i++) {
+                for(int j = 0; j < 60; j += 30) {
+                    String time = String.format("%02d:%02d", i, j);
+                    JSONObject jsonObject = new JSONObject();
+                    try {
+                        jsonObject.put("value", time);
+                        jsonObject.put("label", time);
+                    } catch (JSONException ignored) {}
+
+                    jsonArray.put(jsonObject);
+                }
+            }
+
+            try {
+                jsonArray.write(response.getWriter());
+            } catch (JSONException e) {
+                LogUtil.error(this.getClass().getName(), e, "Get Time's options Error!");
             }
         } else {
             response.setStatus(HttpServletResponse.SC_NO_CONTENT);

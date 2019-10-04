@@ -29,7 +29,7 @@ import java.util.Map;
 public class StartProcessTool extends DefaultApplicationPlugin implements PluginWebSupport {
     @Override
     public String getName() {
-        return AppPluginUtil.getMessage("startProcess.startProcessTool", getClassName(), "/messages/StartProcess");
+        return "Start Process Tool";
     }
 
     @Override
