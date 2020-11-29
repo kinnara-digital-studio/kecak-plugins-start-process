@@ -1,6 +1,5 @@
 package com.kinnara.kecakplugins.startprocess;
 
-import org.joda.time.DateTime;
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.PackageDefinition;
@@ -37,7 +36,7 @@ public class StartProcessScheduler extends DefaultSchedulerPlugin implements Plu
 
     @Override
     public String getName() {
-        return "Start Process Scheduler";
+        return getLabel() + getVersion();
     }
 
     @Override
@@ -52,7 +51,7 @@ public class StartProcessScheduler extends DefaultSchedulerPlugin implements Plu
 
     @Override
     public String getLabel() {
-        return getName();
+        return "Start Process Scheduler";
     }
 
     @Override

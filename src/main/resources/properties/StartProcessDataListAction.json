@@ -1,0 +1,79 @@
+[
+  {
+    "title": "@@startProcess.dataListAction@@",
+    "properties": [
+      {
+        "name" : "label",
+        "label" : "@@datalist.hyperlinkdatalistaction.label@@",
+        "type" : "textfield",
+        "description" : "@@datalist.hyperlinkdatalistaction.label.desc@@",
+        "value" : "Hyperlink"
+      },
+      {
+        "label" : "@@datalist.hyperlinkdatalistaction.hyperlinkTarget@@",
+        "name" : "target",
+        "type" : "selectbox",
+        "description" : "@@datalist.hyperlinkdatalistaction.hyperlinkTarget.desc@@",
+        "options" : [
+          {
+            "value" : "_self",
+            "label" : "@@datalist.hyperlinkdatalistaction.currentWindow@@"
+          },
+          {
+            "value" : "_blank",
+            "label" : "@@datalist.hyperlinkdatalistaction.newWindow@@"
+          },
+          {
+            "value" : "popup",
+            "label" : "@@datalist.hyperlinkdatalistaction.popup@@"
+          }
+        ]
+      },
+      {
+        "label" : "@@datalist.hyperlinkdatalistaction.confirmationMessage@@",
+        "name" : "confirmation",
+        "type" : "textfield"
+      }
+    ]
+  },
+  {
+    "title": "Process",
+    "properties": [
+      {
+        "name" : "processId",
+        "label" : "@@startProcess.processId@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions"
+      },
+      {
+        "name": "formDefId",
+        "label": "@@startProcess.formDefId@@",
+        "type": "selectbox",
+        "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
+      },
+      {
+        "name": "fieldToStoreProcessId",
+        "label": "@@startProcess.fieldToStoreProcessId@@",
+        "type": "textfield"
+      },
+      {
+        "name": "workflowVariables",
+        "label" : "@@startProcess.workflowVariables@@",
+        "type": "grid",
+        "columns": [
+          {
+            "key": "name",
+            "label": "@@startProcess.name@@",
+            "required": "true"
+          },
+          {
+            "key": "value",
+            "label": "@@startProcess.value@@",
+            "required": "true"
+          }
+        ]
+      }
+    ]
+  }
+]
