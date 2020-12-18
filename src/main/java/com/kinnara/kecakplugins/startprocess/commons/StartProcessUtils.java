@@ -19,11 +19,9 @@ import org.springframework.context.ApplicationContext;
 
 import javax.annotation.Nonnull;
 import javax.servlet.http.HttpServletResponse;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public interface StartProcessUtils {
     Map<String, Form> formCache = new HashMap<>();
@@ -94,7 +92,17 @@ public interface StartProcessUtils {
 
             // trigger run process
             WorkflowProcessResult processResult = appService.submitFormToStartProcess(packageActivityForm, formData, workflowVariables, null);
-            return Optional.ofNullable(processResult).orElseThrow(() -> new StartProcessException("Error starting process [" + packageActivityForm.getProcessDefId() + "]"));
+            return Optional.ofNullable(processResult).orElseThrow(() -> {
+                String message = Optional.of(formData)
+                        .map(FormData::getFormErrors)
+                        .map(Map::entrySet)
+                        .map(Collection::stream)
+                        .orElseGet(Stream::empty)
+                        .map(e -> String.format("{%s=>%s}", e.getKey(), e.getValue()))
+                        .collect(Collectors.joining(", "));
+
+                return new StartProcessException("Error starting process [" + packageActivityForm.getProcessDefId() + "] message [" + message + "]");
+            });
 
         }
     }
