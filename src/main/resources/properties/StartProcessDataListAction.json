@@ -37,7 +37,7 @@
     ]
   },
   {
-    "title": "Process",
+    "title": "Process Start",
     "properties": [
       {
         "name" : "processId",
@@ -45,6 +45,15 @@
         "type" : "selectbox",
         "required" : "true",
         "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions"
+      }
+    ]
+  },
+  {
+    "title": "Process Result",
+    "properties": [
+      {
+        "label": "Form Binding",
+        "type": "header"
       },
       {
         "name": "formDefId",

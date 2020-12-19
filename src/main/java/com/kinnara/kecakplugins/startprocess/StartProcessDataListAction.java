@@ -71,15 +71,14 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
             DataListActionResult result = new DataListActionResult();
             result.setType(DataListActionResult.TYPE_REDIRECT);
-            String activityId = Optional.of(workflowProcessResult)
+            Optional.of(workflowProcessResult)
                     .map(WorkflowProcessResult::getActivities)
                     .map(Collection::stream)
                     .orElseGet(Stream::empty)
                     .findFirst()
                     .map(WorkflowActivity::getId)
-                    .orElseThrow(() -> new StartProcessException("No assignment"));
+                    .ifPresent(s -> result.setUrl("/web/client/app/assignment/" + s));
 
-            result.setUrl("/web/client/app/assignment/" + activityId);
             return result;
 
         } catch (StartProcessException e) {
