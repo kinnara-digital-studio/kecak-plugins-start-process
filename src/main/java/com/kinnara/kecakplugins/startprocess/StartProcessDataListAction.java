@@ -45,12 +45,16 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     @Override
     public String getHrefParam() {
-        return "";
+        return null;
     }
 
     @Override
     public String getHrefColumn() {
-        return "";
+        return null;
+    }
+
+    protected String getParameterAssignment() {
+        return getPropertyString("parameterAssignment");
     }
 
     @Override
@@ -59,12 +63,13 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     }
 
     @Override
-    public DataListActionResult executeAction(DataList dataList, String[] strings) {
+    public DataListActionResult executeAction(DataList dataList, String[] rowKeys) {
+        LogUtil.info(getClassName(), "executeAction ["+String.join(",", rowKeys)+"]");
         try {
             Form form = generateForm(getFormDefId());
             WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables());
 
-            Optional.ofNullable(strings)
+            Optional.ofNullable(rowKeys)
                     .map(Arrays::stream)
                     .orElseGet(Stream::empty)
                     .forEach(s -> updateFormField(form, s, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId()));
@@ -77,7 +82,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                     .orElseGet(Stream::empty)
                     .findFirst()
                     .map(WorkflowActivity::getId)
-                    .ifPresent(s -> result.setUrl("/web/client/app/assignment/" + s));
+                    .ifPresent(s -> result.setUrl(constructHref(s)));
 
             return result;
 
@@ -117,19 +122,19 @@ public class StartProcessDataListAction extends DataListActionDefault implements
         return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessDataListAction.json", null, true, "/messages/StartProcess");
     }
 
-    private String getFormDefId() {
+    protected String getFormDefId() {
         return getPropertyString("formDefId");
     }
 
-    private String getProcessId() {
+    protected String getProcessId() {
         return getPropertyString("processId");
     }
 
-    private String getFieldFormProcessId() {
+    protected String getFieldFormProcessId() {
         return getPropertyString("fieldToStoreProcessId");
     }
 
-    private Map<String, String> getWorkflowVariables() {
+    protected Map<String, String> getWorkflowVariables() {
         return Optional.of("workflowVariables")
                 .map(this::getProperty)
                 .map(o -> (Object[])o)
@@ -137,5 +142,29 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                 .orElseGet(Stream::empty)
                 .map(o -> (Map<String, Object>)o)
                 .collect(Collectors.toMap(m -> AppUtil.processHashVariable(m.get("name").toString(), null, null, null), m -> AppUtil.processHashVariable(m.get("value").toString(), null, null, null)));
+    }
+
+    /**
+     * Constuct href
+     *
+     * @return
+     */
+    protected String constructHref(String assignmentId) {
+        StringBuilder url = new StringBuilder(getHref());
+
+        if(!getParameterAssignment().isEmpty()) {
+            url.append(getUrlSeparator(url.toString()))
+                    .append(getParameterAssignment())
+                    .append("=")
+                    .append(assignmentId);
+        }
+
+        LogUtil.info(getClassName(), "constructHref : url ["+url.toString()+"]");
+
+        return url.toString();
+    }
+
+    protected String getUrlSeparator(String url) {
+        return url.contains("?") ? "&" : "?";
     }
 }

@@ -7,7 +7,71 @@
         "label" : "@@datalist.hyperlinkdatalistaction.label@@",
         "type" : "textfield",
         "description" : "@@datalist.hyperlinkdatalistaction.label.desc@@",
-        "value" : "Hyperlink"
+        "value" : "Start"
+      },
+      {
+        "label" : "@@datalist.hyperlinkdatalistaction.confirmationMessage@@",
+        "name" : "confirmation",
+        "type" : "textfield"
+      }
+    ]
+  },
+  {
+    "title": "Process Start",
+    "properties": [
+      {
+        "name" : "processId",
+        "label" : "@@startProcess.processId@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions"
+      },
+      {
+        "name": "workflowVariables",
+        "label" : "@@startProcess.workflowVariables@@",
+        "type": "grid",
+        "columns": [
+          {
+            "key": "name",
+            "label": "@@startProcess.name@@",
+            "required": "true"
+          },
+          {
+            "key": "value",
+            "label": "@@startProcess.value@@",
+            "required": "true"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Process Result",
+    "properties": [
+      {
+        "label": "Form Binding",
+        "type": "header"
+      },
+      {
+        "name": "formDefId",
+        "label": "@@startProcess.formDefId@@",
+        "type": "selectbox",
+        "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
+      },
+      {
+        "name": "fieldToStoreProcessId",
+        "label": "@@startProcess.fieldToStoreProcessId@@",
+        "type": "textfield"
+      }
+    ]
+  },
+  {
+    "title": "Redirect",
+    "properties": [
+      {
+        "name": "href",
+        "label": "@@datalist.hyperlinkdatalistaction.hyperlink@@",
+        "type": "textfield"
       },
       {
         "label" : "@@datalist.hyperlinkdatalistaction.hyperlinkTarget@@",
@@ -30,58 +94,9 @@
         ]
       },
       {
-        "label" : "@@datalist.hyperlinkdatalistaction.confirmationMessage@@",
-        "name" : "confirmation",
-        "type" : "textfield"
-      }
-    ]
-  },
-  {
-    "title": "Process Start",
-    "properties": [
-      {
-        "name" : "processId",
-        "label" : "@@startProcess.processId@@",
-        "type" : "selectbox",
-        "required" : "true",
-        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions"
-      }
-    ]
-  },
-  {
-    "title": "Process Result",
-    "properties": [
-      {
-        "label": "Form Binding",
-        "type": "header"
-      },
-      {
-        "name": "formDefId",
-        "label": "@@startProcess.formDefId@@",
-        "type": "selectbox",
-        "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
-      },
-      {
-        "name": "fieldToStoreProcessId",
-        "label": "@@startProcess.fieldToStoreProcessId@@",
+        "name": "parameterAssignment",
+        "label": "@@startProcess.parameterAssignment@@",
         "type": "textfield"
-      },
-      {
-        "name": "workflowVariables",
-        "label" : "@@startProcess.workflowVariables@@",
-        "type": "grid",
-        "columns": [
-          {
-            "key": "name",
-            "label": "@@startProcess.name@@",
-            "required": "true"
-          },
-          {
-            "key": "value",
-            "label": "@@startProcess.value@@",
-            "required": "true"
-          }
-        ]
       }
     ]
   }
