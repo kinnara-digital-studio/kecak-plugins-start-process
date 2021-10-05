@@ -1,0 +1,43 @@
+[
+  {
+    "title": "@@startProcess.startProcessFormButton@@",
+    "properties": [
+      {
+        "name" : "label",
+        "label" : "@@datalist.hyperlinkdatalistaction.label@@",
+        "type" : "textfield",
+        "description" : "@@datalist.hyperlinkdatalistaction.label.desc@@",
+        "value" : "Start"
+      },
+      {
+        "label" : "@@datalist.hyperlinkdatalistaction.confirmationMessage@@",
+        "name" : "confirmation",
+        "type" : "textfield"
+      },
+      {
+        "name" : "processId",
+        "label" : "@@startProcess.processId@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/org.joget.apps.userview.lib.RunProcess/service?action=getOptions"
+      },
+      {
+        "name": "workflowVariables",
+        "label" : "@@startProcess.workflowVariables@@",
+        "type": "grid",
+        "columns": [
+          {
+            "key": "name",
+            "label": "@@startProcess.name@@",
+            "required": "true"
+          },
+          {
+            "key": "value",
+            "label": "@@startProcess.value@@",
+            "required": "true"
+          }
+        ]
+      }
+    ]
+  }
+]

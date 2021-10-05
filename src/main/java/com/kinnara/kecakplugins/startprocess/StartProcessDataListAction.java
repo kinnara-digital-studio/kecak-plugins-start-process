@@ -64,15 +64,16 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     @Override
     public DataListActionResult executeAction(DataList dataList, String[] rowKeys) {
-        LogUtil.info(getClassName(), "executeAction ["+String.join(",", rowKeys)+"]");
         try {
-            Form form = generateForm(getFormDefId());
             WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables());
 
-            Optional.ofNullable(rowKeys)
-                    .map(Arrays::stream)
-                    .orElseGet(Stream::empty)
-                    .forEach(s -> updateFormField(form, s, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId()));
+            Form form = generateForm(getFormDefId());
+            if(form != null) {
+                Optional.ofNullable(rowKeys)
+                        .map(Arrays::stream)
+                        .orElseGet(Stream::empty)
+                        .forEach(s -> updateFormField(form, s, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId()));
+            }
 
             DataListActionResult result = new DataListActionResult();
             result.setType(DataListActionResult.TYPE_REDIRECT);

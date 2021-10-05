@@ -18,6 +18,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(StartFormProcessTool.class.getName(), new StartFormProcessTool(), null));
         registrationList.add(context.registerService(StartProcessScheduler.class.getName(), new StartProcessScheduler(), null));
         registrationList.add(context.registerService(StartProcessDataListAction.class.getName(), new StartProcessDataListAction(), null));
+        registrationList.add(context.registerService(StartProcessFormButton.class.getName(), new StartProcessFormButton(), null));
     }
 
     public void stop(BundleContext context) {

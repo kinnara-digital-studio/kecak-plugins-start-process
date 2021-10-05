@@ -18,25 +18,20 @@ import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.context.ApplicationContext;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface StartProcessUtils {
-    Map<String, Form> formCache = new HashMap<>();
-
-    @Nonnull
+    @Nullable
     default Form generateForm(String formDefId) throws StartProcessException {
         AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
-
-        if(formCache.containsKey(formDefId))
-            return formCache.get(formDefId);
 
         // proceed without cache
         ApplicationContext appContext = AppUtil.getApplicationContext();
         FormService formService = (FormService) appContext.getBean("formService");
-
 
         if (appDefinition != null && formDefId != null && !formDefId.isEmpty()) {
             FormDefinitionDao formDefinitionDao =
@@ -46,15 +41,11 @@ public interface StartProcessUtils {
             if (formDef != null) {
                 String json = formDef.getJson();
                 Form form = (Form)formService.createElementFromJson(json);
-
-                // put in cache if possible
-                formCache.put(formDefId, form);
-
                 return form;
             }
         }
 
-        throw new StartProcessException("Error generating form [" + formDefId + "]");
+        return null;
     }
 
     @Nonnull
@@ -76,11 +67,10 @@ public interface StartProcessUtils {
         }
 
         // get process form
-        PackageActivityForm packageActivityForm = Optional.ofNullable(appService.viewStartProcessForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), processDefId, null, ""))
-                .orElseThrow(() -> new StartProcessException("Start Process [" + processDefId + "] has not been mapped to form"));
+        @Nullable PackageActivityForm packageActivityForm = Optional.ofNullable(appService.viewStartProcessForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), processDefId, null, ""))
+                .orElse(null);
 
-        Form form = packageActivityForm.getForm();
-        if(form == null) {
+        if(packageActivityForm == null || packageActivityForm.getForm() == null) {
             return Optional.of(processDefId)
                 .map(s -> workflowManager.processStart(s, workflowVariables))
                 .orElseThrow(() -> new StartProcessException("Error starting process [" + processDefId + "]"));
