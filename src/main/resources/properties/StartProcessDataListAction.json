@@ -38,8 +38,11 @@
           },
           {
             "key": "value",
-            "label": "@@startProcess.value@@",
-            "required": "true"
+            "label": "@@startProcess.value@@"
+          },
+          {
+            "key": "field",
+            "label": "@@startProcess.field@@"
           }
         ]
       }

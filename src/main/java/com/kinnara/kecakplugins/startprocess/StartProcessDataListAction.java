@@ -2,19 +2,20 @@ package com.kinnara.kecakplugins.startprocess;
 
 import com.kinnara.kecakplugins.startprocess.commons.StartProcessException;
 import com.kinnara.kecakplugins.startprocess.commons.StartProcessUtils;
+import com.kinnarastudio.commons.Try;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListActionDefault;
 import org.joget.apps.datalist.model.DataListActionResult;
+import org.joget.apps.datalist.model.DataListCollection;
 import org.joget.apps.form.model.Form;
 import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowProcessResult;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -28,7 +29,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     public String getLinkLabel() {
         String label = getPropertyString("label");
         if (label == null || label.isEmpty()) {
-            label = "Hyperlink";
+            label = "Start Process";
         }
         return label;
     }
@@ -45,12 +46,12 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     @Override
     public String getHrefParam() {
-        return null;
+        return getPropertyString("hrefParam");
     }
 
     @Override
     public String getHrefColumn() {
-        return null;
+        return getPropertyString("hrefColumn");
     }
 
     protected String getParameterAssignment() {
@@ -63,29 +64,37 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     }
 
     @Override
-    public DataListActionResult executeAction(DataList dataList, String[] rowKeys) {
+    public DataListActionResult executeAction(DataList dataList, @Nullable String[] rowKeys) {
         try {
-            WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables());
+            @Nullable final Form form = generateForm(getFormDefId());
+            DataListCollection rows = dataList.getRows();
 
-            Form form = generateForm(getFormDefId());
-            if(form != null) {
-                Optional.ofNullable(rowKeys)
-                        .map(Arrays::stream)
-                        .orElseGet(Stream::empty)
-                        .forEach(s -> updateFormField(form, s, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId()));
-            }
-
-            DataListActionResult result = new DataListActionResult();
-            result.setType(DataListActionResult.TYPE_REDIRECT);
-            Optional.of(workflowProcessResult)
-                    .map(WorkflowProcessResult::getActivities)
-                    .map(Collection::stream)
+            final Set<DataListActionResult> results = Optional.ofNullable(rowKeys)
+                    .map(Arrays::stream)
                     .orElseGet(Stream::empty)
-                    .findFirst()
-                    .map(WorkflowActivity::getId)
-                    .ifPresent(s -> result.setUrl(constructHref(s)));
+                    .map(Try.onFunction(key -> {
+                        Map<String, String> row = getRow(dataList, rows, key);
+                        WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables(row));
 
-            return result;
+                        if(form != null) {
+                            updateFormField(form, key, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId());
+                        }
+
+                        DataListActionResult result = new DataListActionResult();
+                        result.setType(DataListActionResult.TYPE_REDIRECT);
+                        Optional.of(workflowProcessResult)
+                                .map(WorkflowProcessResult::getActivities)
+                                .map(Collection::stream)
+                                .orElseGet(Stream::empty)
+                                .findFirst()
+                                .map(WorkflowActivity::getId)
+                                .ifPresent(s -> result.setUrl(constructHref(s)));
+
+                        return result;
+                    }))
+                    .collect(Collectors.toSet());
+
+            return results.stream().findFirst().orElse(null);
 
         } catch (StartProcessException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
@@ -135,14 +144,23 @@ public class StartProcessDataListAction extends DataListActionDefault implements
         return getPropertyString("fieldToStoreProcessId");
     }
 
-    protected Map<String, String> getWorkflowVariables() {
+    protected Map<String, String> getWorkflowVariables(Map<String, String> row) {
         return Optional.of("workflowVariables")
                 .map(this::getProperty)
                 .map(o -> (Object[])o)
                 .map(Arrays::stream)
                 .orElseGet(Stream::empty)
                 .map(o -> (Map<String, Object>)o)
-                .collect(Collectors.toMap(m -> AppUtil.processHashVariable(m.get("name").toString(), null, null, null), m -> AppUtil.processHashVariable(m.get("value").toString(), null, null, null)));
+                .collect(Collectors.toMap(m -> AppUtil.processHashVariable(m.get("name").toString(), null, null, null), m -> {
+                    String field = String.valueOf(m.get("field"));
+                    String value = String.valueOf(m.get("value"));
+
+                    if(field.isEmpty()) {
+                        return AppUtil.processHashVariable(value, null, null, null);
+                    } else {
+                        return row.get(field);
+                    }
+                }));
     }
 
     /**
@@ -167,5 +185,19 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     protected String getUrlSeparator(String url) {
         return url.contains("?") ? "&" : "?";
+    }
+
+    @Nonnull
+    protected Map<String, String> getRow(DataList dataList, DataListCollection rows, String key) {
+        final String keyField = dataList.getBinder().getPrimaryKeyColumnName();
+        return Optional.ofNullable(rows)
+                .map(DataListCollection<Map<String, String>>::stream)
+                .orElseGet(Stream::empty)
+                .filter(m -> key.equals(m.get(keyField)))
+                .findFirst()
+                .orElseGet(HashMap::new);
+
+
+
     }
 }
