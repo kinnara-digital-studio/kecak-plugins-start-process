@@ -67,7 +67,9 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     public DataListActionResult executeAction(DataList dataList, @Nullable String[] rowKeys) {
         try {
             @Nullable final Form form = generateForm(getFormDefId());
-            DataListCollection rows = dataList.getRows();
+
+            final DataListCollection<Map<String, String>> rows = dataList.getRows(Integer.MAX_VALUE, 0);
+            rows.sort(Comparator.comparing(m -> m.get(dataList.getBinder().getPrimaryKeyColumnName())));
 
             final Set<DataListActionResult> results = Optional.ofNullable(rowKeys)
                     .map(Arrays::stream)
@@ -151,14 +153,15 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                 .map(Arrays::stream)
                 .orElseGet(Stream::empty)
                 .map(o -> (Map<String, Object>)o)
-                .collect(Collectors.toMap(m -> AppUtil.processHashVariable(m.get("name").toString(), null, null, null), m -> {
-                    String field = String.valueOf(m.get("field"));
-                    String value = String.valueOf(m.get("value"));
+                .collect(Collectors.toMap(m -> AppUtil.processHashVariable(String.valueOf(m.get("name")), null, null, null), m -> {
+                    final String field = String.valueOf(m.get("field"));
+                    final String value = String.valueOf(m.get("value"));
 
-                    if(field.isEmpty()) {
-                        return AppUtil.processHashVariable(value, null, null, null);
-                    } else {
+                    LogUtil.info(getClassName(), "field ["+field+"] row ["+row.get(field)+"]");
+                    if(!field.isEmpty()) {
                         return row.get(field);
+                    } else {
+                        return AppUtil.processHashVariable(value, null, null, null);
                     }
                 }));
     }
@@ -193,7 +196,10 @@ public class StartProcessDataListAction extends DataListActionDefault implements
         return Optional.ofNullable(rows)
                 .map(DataListCollection<Map<String, String>>::stream)
                 .orElseGet(Stream::empty)
-                .filter(m -> key.equals(m.get(keyField)))
+                .filter(row -> {
+                    final String primaryKey = row.get(keyField);
+                    return key.equals(primaryKey);
+                })
                 .findFirst()
                 .orElseGet(HashMap::new);
 
