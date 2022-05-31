@@ -155,12 +155,12 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                 .map(o -> (Map<String, Object>)o)
                 .collect(Collectors.toMap(m -> AppUtil.processHashVariable(String.valueOf(m.get("name")), null, null, null), m -> {
                     final String field = String.valueOf(m.get("field"));
-                    final String value = String.valueOf(m.get("value"));
 
-                    LogUtil.info(getClassName(), "field ["+field+"] row ["+row.get(field)+"]");
                     if(!field.isEmpty()) {
-                        return row.get(field);
+                        final String rowValue = row.getOrDefault(field, "");
+                        return rowValue;
                     } else {
+                        final String value = String.valueOf(m.get("value"));
                         return AppUtil.processHashVariable(value, null, null, null);
                     }
                 }));
