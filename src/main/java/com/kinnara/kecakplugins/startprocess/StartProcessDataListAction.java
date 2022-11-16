@@ -10,6 +10,7 @@ import org.joget.apps.datalist.model.DataListActionResult;
 import org.joget.apps.datalist.model.DataListCollection;
 import org.joget.apps.form.model.Form;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowProcessResult;
 
@@ -75,7 +76,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                     .map(Arrays::stream)
                     .orElseGet(Stream::empty)
                     .map(Try.onFunction(key -> {
-                        Map<String, String> row = getRow(dataList, rows, key);
+                        Map<String, Object> row = getRow(dataList, rows, key);
                         WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables(row));
 
                         if(form != null) {
@@ -88,12 +89,14 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                                 .map(WorkflowProcessResult::getActivities)
                                 .map(Collection::stream)
                                 .orElseGet(Stream::empty)
+                                .filter(Objects::nonNull)
                                 .findFirst()
                                 .map(WorkflowActivity::getId)
                                 .ifPresent(s -> result.setUrl(constructHref(s)));
 
                         return result;
                     }))
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
             return results.stream().findFirst().orElse(null);
@@ -111,7 +114,10 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     @Override
     public String getVersion() {
-        return getClass().getPackage().getImplementationVersion();
+        PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+        ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+        String buildNumber = resourceBundle.getString("build.number");
+        return buildNumber;
     }
 
     @Override
@@ -146,7 +152,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
         return getPropertyString("fieldToStoreProcessId");
     }
 
-    protected Map<String, String> getWorkflowVariables(Map<String, String> row) {
+    protected Map<String, String> getWorkflowVariables(Map<String, Object> row) {
         return Optional.of("workflowVariables")
                 .map(this::getProperty)
                 .map(o -> (Object[])o)
@@ -159,7 +165,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
                     LogUtil.info(getClassName(), "field ["+field+"] row ["+row.get(field)+"]");
                     if(!field.isEmpty()) {
-                        return row.get(field);
+                        return String.valueOf(row.get(field));
                     } else {
                         return AppUtil.processHashVariable(value, null, null, null);
                     }
@@ -191,13 +197,13 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     }
 
     @Nonnull
-    protected Map<String, String> getRow(DataList dataList, DataListCollection rows, String key) {
+    protected Map<String, Object> getRow(DataList dataList, DataListCollection rows, String key) {
         final String keyField = dataList.getBinder().getPrimaryKeyColumnName();
         return Optional.ofNullable(rows)
-                .map(DataListCollection<Map<String, String>>::stream)
+                .map(DataListCollection<Map<String, Object>>::stream)
                 .orElseGet(Stream::empty)
                 .filter(row -> {
-                    final String primaryKey = row.get(keyField);
+                    final String primaryKey = String.valueOf(row.get(keyField));
                     return key.equals(primaryKey);
                 })
                 .findFirst()

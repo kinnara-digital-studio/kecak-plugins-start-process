@@ -7,6 +7,12 @@
     <version>1.0.0</version>
     <name>kecak-plugins-start-process</name>
     <url>http://www.kecak.org</url>
+    <scm>
+        <connection>scm:git:ssh://git@gitlab.com:kinnarastudio/kecak-plugins-start-process.git</connection>
+        <developerConnection>scm:git:ssh://git@gitlab.com:kinnarastudio/kecak-plugins-start-process.git</developerConnection>
+        <url>ssh://git@gitlab.com:kinnarastudio/kecak-plugins-start-process.git</url>
+        <tag>HEAD</tag>
+    </scm>
     <build>
         <plugins>
             <plugin>
