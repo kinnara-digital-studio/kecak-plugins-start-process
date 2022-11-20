@@ -11,6 +11,7 @@ import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormService;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.apps.workflow.lib.AssignmentCompleteButton;
+import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
@@ -72,7 +73,14 @@ public interface StartProcessUtils {
 
         if(packageActivityForm == null || packageActivityForm.getForm() == null) {
             return Optional.of(processDefId)
-                .map(s -> workflowManager.processStart(s, workflowVariables))
+                .map(s -> {
+                    LogUtil.info(getClass().getName(), "Starting process [" + s + "]");
+                    return workflowManager.processStart(s, workflowVariables);
+                })
+                    .map(workflowProcessResult -> {
+                        LogUtil.info(getClass().getName(), "Process [" + workflowProcessResult.getProcess().getInstanceId() + "] has beeen started");
+                        return workflowProcessResult;
+                    })
                 .orElseThrow(() -> new StartProcessException("Error starting process [" + processDefId + "]"));
         } else {
             final FormData formData = formService.retrieveFormDataFromRequestMap(null, new HashMap<>());

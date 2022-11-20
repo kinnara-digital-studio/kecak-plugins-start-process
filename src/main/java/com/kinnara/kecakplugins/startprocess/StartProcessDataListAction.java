@@ -13,9 +13,11 @@ import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowProcessResult;
+import org.joget.workflow.util.WorkflowUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -42,7 +44,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     @Override
     public String getTarget() {
-        return getPropertyString("target");
+        return "post";
     }
 
     @Override
@@ -67,6 +69,11 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     @Override
     public DataListActionResult executeAction(DataList dataList, @Nullable String[] rowKeys) {
         try {
+            HttpServletRequest request = WorkflowUtil.getHttpServletRequest();
+            if (request != null && !"POST".equalsIgnoreCase(request.getMethod())) {
+                return null;
+            }
+
             @Nullable final Form form = generateForm(getFormDefId());
 
             final DataListCollection<Map<String, String>> rows = dataList.getRows(Integer.MAX_VALUE, 0);
@@ -75,6 +82,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
             final Set<DataListActionResult> results = Optional.ofNullable(rowKeys)
                     .map(Arrays::stream)
                     .orElseGet(Stream::empty)
+                    .sorted()
+                    .distinct()
                     .map(Try.onFunction(key -> {
                         Map<String, Object> row = getRow(dataList, rows, key);
                         WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables(row));
@@ -85,14 +94,18 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
                         DataListActionResult result = new DataListActionResult();
                         result.setType(DataListActionResult.TYPE_REDIRECT);
-                        Optional.of(workflowProcessResult)
+
+                        final String url = Optional.of(workflowProcessResult)
                                 .map(WorkflowProcessResult::getActivities)
                                 .map(Collection::stream)
                                 .orElseGet(Stream::empty)
                                 .filter(Objects::nonNull)
                                 .findFirst()
                                 .map(WorkflowActivity::getId)
-                                .ifPresent(s -> result.setUrl(constructHref(s)));
+                                .map(this::constructHref)
+                                .orElse("REFERER");
+
+                        result.setUrl(url);
 
                         return result;
                     }))
@@ -100,7 +113,6 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                     .collect(Collectors.toSet());
 
             return results.stream().findFirst().orElse(null);
-
         } catch (StartProcessException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
             return null;
@@ -187,8 +199,6 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                     .append(assignmentId);
         }
 
-        LogUtil.info(getClassName(), "constructHref : url ["+url.toString()+"]");
-
         return url.toString();
     }
 
@@ -208,8 +218,5 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                 })
                 .findFirst()
                 .orElseGet(HashMap::new);
-
-
-
     }
 }
