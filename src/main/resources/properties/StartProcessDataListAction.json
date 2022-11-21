@@ -45,6 +45,19 @@
             "label": "@@startProcess.field@@"
           }
         ]
+      },
+      {
+        "name": "singleProcess",
+        "label": "@@startProcess.singleProcess@@",
+        "description": "@@startProcess.singleProcess.desc@@",
+        "type": "checkbox",
+        "value": "",
+        "options": [
+          {
+            "value": "true",
+            "label": ""
+          }
+        ]
       }
     ]
   },

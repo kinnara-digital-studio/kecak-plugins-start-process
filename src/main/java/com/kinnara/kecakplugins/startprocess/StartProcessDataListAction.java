@@ -12,6 +12,7 @@ import org.joget.apps.form.model.Form;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowActivity;
+import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.util.WorkflowUtil;
 
@@ -79,40 +80,84 @@ public class StartProcessDataListAction extends DataListActionDefault implements
             final DataListCollection<Map<String, String>> rows = dataList.getRows(Integer.MAX_VALUE, 0);
             rows.sort(Comparator.comparing(m -> m.get(dataList.getBinder().getPrimaryKeyColumnName())));
 
-            final Set<DataListActionResult> results = Optional.ofNullable(rowKeys)
-                    .map(Arrays::stream)
-                    .orElseGet(Stream::empty)
-                    .sorted()
-                    .distinct()
-                    .map(Try.onFunction(key -> {
-                        Map<String, Object> row = getRow(dataList, rows, key);
-                        WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables(row));
+            if(isSingleProcess()) {
+                // collect and combine workflow variables using ; delimiter
+                final Map<String, String> workflowVariables = Optional.ofNullable(rowKeys)
+                        .map(Arrays::stream)
+                        .orElseGet(Stream::empty)
+                        .sorted()
+                        .distinct()
+                        .map(key -> getRow(dataList, rows, key))
+                        .map(this::getWorkflowVariables)
+                        .map(Map::entrySet)
+                        .flatMap(Collection::stream)
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (val1, val2) -> String.join(";", val1, val2)));
 
-                        if(form != null) {
-                            updateFormField(form, key, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId());
-                        }
+                final WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), workflowVariables);
+                final String instanceId = Optional.of(workflowProcessResult)
+                        .map(WorkflowProcessResult::getProcess)
+                        .map(WorkflowProcess::getInstanceId)
+                                .orElseThrow(() -> new StartProcessException("Error starting process [" + getProcessId() + "]"));
 
-                        DataListActionResult result = new DataListActionResult();
-                        result.setType(DataListActionResult.TYPE_REDIRECT);
+                Optional.ofNullable(rowKeys)
+                        .map(Arrays::stream)
+                        .orElseGet(Stream::empty)
+                        .sorted()
+                        .distinct()
+                        .forEach(key -> updateFormField(form, key, getFieldFormProcessId(), instanceId));
 
-                        final String url = Optional.of(workflowProcessResult)
-                                .map(WorkflowProcessResult::getActivities)
-                                .map(Collection::stream)
-                                .orElseGet(Stream::empty)
-                                .filter(Objects::nonNull)
-                                .findFirst()
-                                .map(WorkflowActivity::getId)
-                                .map(this::constructHref)
-                                .orElse("REFERER");
+                final DataListActionResult result = new DataListActionResult();
+                result.setType(DataListActionResult.TYPE_REDIRECT);
 
-                        result.setUrl(url);
+                final String url = Optional.of(workflowProcessResult)
+                        .map(WorkflowProcessResult::getActivities)
+                        .map(Collection::stream)
+                        .orElseGet(Stream::empty)
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .map(WorkflowActivity::getId)
+                        .map(this::constructHref)
+                        .orElse("REFERER");
 
-                        return result;
-                    }))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+                result.setUrl(url);
 
-            return results.stream().findFirst().orElse(null);
+                return result;
+            } else {
+                final Set<DataListActionResult> results = Optional.ofNullable(rowKeys)
+                        .map(Arrays::stream)
+                        .orElseGet(Stream::empty)
+                        .sorted()
+                        .distinct()
+                        .map(Try.onFunction(key -> {
+                            final Map<String, Object> row = getRow(dataList, rows, key);
+                            final WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables(row));
+
+                            if (form != null) {
+                                updateFormField(form, key, getFieldFormProcessId(), workflowProcessResult.getProcess().getInstanceId());
+                            }
+
+                            final DataListActionResult result = new DataListActionResult();
+                            result.setType(DataListActionResult.TYPE_REDIRECT);
+
+                            final String url = Optional.of(workflowProcessResult)
+                                    .map(WorkflowProcessResult::getActivities)
+                                    .map(Collection::stream)
+                                    .orElseGet(Stream::empty)
+                                    .filter(Objects::nonNull)
+                                    .findFirst()
+                                    .map(WorkflowActivity::getId)
+                                    .map(this::constructHref)
+                                    .orElse("REFERER");
+
+                            result.setUrl(url);
+
+                            return result;
+                        }))
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+                return results.stream().findFirst().orElse(null);
+            }
         } catch (StartProcessException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
             return null;
@@ -218,5 +263,9 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                 })
                 .findFirst()
                 .orElseGet(HashMap::new);
+    }
+
+    protected boolean isSingleProcess() {
+        return "true".equalsIgnoreCase(getPropertyString("singleProcess"));
     }
 }
