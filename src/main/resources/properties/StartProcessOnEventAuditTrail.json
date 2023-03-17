@@ -1,6 +1,6 @@
 [
   {
-    "title" : "@@startProcess.submitProcessFormTool@@",
+    "title" : "@@startProcess.startProcessOnEvent@@",
     "properties" : [
       {
         "type": "header",
