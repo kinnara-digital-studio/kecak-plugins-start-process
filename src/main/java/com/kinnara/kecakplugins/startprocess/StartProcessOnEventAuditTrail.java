@@ -151,8 +151,6 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
         try {
             final String action = getParameter(request, "action");
 
-            LogUtil.info(getClassName(), "webService : action [" + action + "]");
-
             if (action.equals("classes")) {
                 final JSONArray result = getClasses().keySet().stream()
                         .map(Try.onFunction(s -> {
