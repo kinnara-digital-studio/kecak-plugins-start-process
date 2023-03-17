@@ -20,6 +20,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -61,6 +62,8 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
         final Set<String> methods = getPropertySet("methods");
 
         if (FormDataDaoImpl.class.getName().equals(clazz) && methods.contains(method)) {
+            Arrays.stream(auditTrail.getArgs()).map(String::valueOf).forEach(s -> LogUtil.info(getClassName(), "args ["+s+"]"));
+
             try {
                 final AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
                 final PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
@@ -164,5 +167,20 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
             LogUtil.error(getClassName(), e, e.getMessage());
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         }
+    }
+
+    @Nonnull
+    public Set<String> getPropertySet(String property) {
+        return Arrays.stream(this.getPropertyString(property).split(";")).collect(Collectors.toSet());
+    }
+
+    @Nonnull
+    public Map<String, String>[] getPropertyGrid(String property) {
+        return Optional.ofNullable(getProperty(property))
+                .map(o -> (Object[]) o)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .map(o -> (Map<String, String>) o)
+                .toArray(Map[]::new);
     }
 }
