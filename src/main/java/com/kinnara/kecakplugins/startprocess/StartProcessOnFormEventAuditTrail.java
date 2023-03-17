@@ -71,7 +71,7 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                 Arrays.stream(auditTrail.getParamTypes()).forEach(c -> LogUtil.info(getClassName(), "getParamTypes [" + c.getName() + "]"));
                 final String loginAs = getPropertyString("loginAs");
                 final Map<String, String> workflowVariables = Arrays.stream(getPropertyGrid("workflowVariables"))
-                        .collect(Collectors.toMap(m -> m.get("name"), Try.onFunction(m -> {
+                        .collect(Collectors.toMap(m -> m.get("name"), m -> {
                             final String field = m.getOrDefault("field", "");
                             if (field.isEmpty()) {
                                 final String value = m.get("value");
@@ -95,12 +95,9 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                                     }
                                 }
 
-                                throw new StartProcessException("Error retrieving field [" + field + "]");
+                                return "";
                             }
-                        }, (StartProcessException e) -> {
-                            LogUtil.error(getClassName(), e, e.getMessage());
-                            return "";
-                        })));
+                        }));
 
                 final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
                 if (result == null || result.getProcess() == null) {
