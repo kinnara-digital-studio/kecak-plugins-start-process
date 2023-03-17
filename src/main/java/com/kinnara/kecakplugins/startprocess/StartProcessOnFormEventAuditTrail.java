@@ -97,6 +97,9 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
                                 throw new StartProcessException("Error retrieving field [" + field + "]");
                             }
+                        }, (StartProcessException e) -> {
+                            LogUtil.error(getClassName(), e, e.getMessage());
+                            return "";
                         })));
 
                 final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
