@@ -9,12 +9,13 @@ import org.joget.apps.app.model.AuditTrail;
 import org.joget.apps.app.model.PackageDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.dao.FormDataDaoImpl;
+import org.joget.apps.form.model.FormRow;
+import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultAuditTrailPlugin;
 import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
-import org.joget.workflow.shark.WorkflowAssignmentManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -23,17 +24,15 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Triggrer start process when any events are triggered
+ * Triggrer start process during form data event
  */
-public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin implements StartProcessUtils {
-    public final static String LABEL = "Start Process On Event";
+public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin implements StartProcessUtils {
+    public final static String LABEL = "Start Process On Form Event";
 
     @Override
     public String getName() {
@@ -57,10 +56,11 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
     public Object execute(Map properties) {
         final AuditTrail auditTrail = (AuditTrail) properties.get("auditTrail");
 
-        final String clazz = getPropertyString("class");
+        final String clazz = auditTrail.getClazz();
+        final String method = auditTrail.getMethod();
         final Set<String> methods = getPropertySet("methods");
 
-        if (clazz.equals(auditTrail.getClazz()) && methods.contains(auditTrail.getMethod())) {
+        if (FormDataDaoImpl.class.getName().equals(clazz) && methods.contains(method)) {
             try {
                 final AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
                 final PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
@@ -68,9 +68,37 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
 
                 final String processDefId = AppUtil.getProcessDefIdWithVersion(packageDefinition.getAppId(), packageDefinition.getVersion().toString(), properties.get("processId").toString());
 
+                Arrays.stream(auditTrail.getParamTypes()).forEach(c -> LogUtil.info(getClassName(), "getParamTypes [" + c.getName() + "]"));
                 final String loginAs = getPropertyString("loginAs");
                 final Map<String, String> workflowVariables = Arrays.stream(getPropertyGrid("workflowVariables"))
-                        .collect(Collectors.toMap(m -> m.get("name"), m -> m.get("value")));
+                        .collect(Collectors.toMap(m -> m.get("name"), m -> {
+                            final String field = m.getOrDefault("field", "");
+                            if (field.isEmpty()) {
+                                final String value = m.get("value");
+                                return value;
+                            } else {
+                                for (int i = 0; i < auditTrail.getParamTypes().length; i++) {
+                                    final Class<?> type = auditTrail.getParamTypes()[i];
+                                    if (type == FormRowSet.class) {
+                                        final FormRowSet rowSet = (FormRowSet) auditTrail.getArgs()[i];
+                                        return Optional.ofNullable(rowSet)
+                                                .map(Collection::stream)
+                                                .orElseGet(Stream::empty)
+                                                .findFirst()
+                                                .map(r -> r.getProperty(field))
+                                                .orElse("");
+                                    } else if (type == FormRow.class) {
+                                        final FormRow row = (FormRow) auditTrail.getArgs()[i];
+                                        return Optional.ofNullable(row)
+                                                .map(r -> r.getProperty(field))
+                                                .orElse("");
+                                    }
+                                }
+
+                                LogUtil.warn(getClassName(), "Error retrieving field [" + field + "]");
+                                return "";
+                            }
+                        }));
 
                 final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
                 if (result == null || result.getProcess() == null) {
@@ -97,52 +125,16 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
     @Override
     public String getPropertyOptions() {
         final String[] args = new String[]{getClassName(), getClassName(), getClassName(), getClassName()};
-        return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessOnEventAuditTrail.json", args, true, "/messages/StartProcess");
+        return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessOnFormEventAuditTrail.json", args, true, "/messages/StartProcess");
     }
 
-    protected Map<String, Collection<String>> getClasses() {
+    protected Map<String, Collection<String>> getMethods() {
         final Map<String, Collection<String>> result = new HashMap<>();
 
         result.put(FormDataDaoImpl.class.getName(),
                 Stream.of("loadWithoutTransaction", "saveOrUpdate", "updateSchema")
                         .collect(Collectors.toList()));
 
-        result.put("org.kecak.webapi.json.controller.DataJsonController",
-                Stream.of("postFormSubmit",
-                                "postFormSubmitMultipart",
-                                "postTempFileUploadForm",
-                                "postTempFileUploadAssignment",
-                                "postTempFileUploadAssignmentByProcess",
-                                "postTempFileUploadProcessStart",
-                                "postFormValidation",
-                                "putFormData",
-                                "putFormDataMultipart",
-                                "getFormDataWithIdAsParameter",
-                                "getFormData",
-                                "deleteFormData",
-                                "getElementData",
-                                "getElementOptionsData",
-                                "getListCount",
-                                "getList",
-                                "getListForm",
-                                "postProcessStart",
-                                "postProcessStartMultipart",
-                                "postAssignmentComplete",
-                                "postAssignmentCompleteMultipart",
-                                "postAssignmentCompleteByProcess",
-                                "postAssignmentCompleteByProcessMultipart",
-                                "getAssignment",
-                                "getAssignmentByProcess",
-                                "getAssignmentUsingForm",
-                                "getAssignmentByProcessUsingForm",
-                                "getAssignmentsCount",
-                                "getAssignments",
-                                "abortAssignment",
-                                "abortAssignmentsByProcess",
-                                "getDataListAssignments",
-                                "getDataListAssignmentsCount",
-                                "postDataListAction")
-                        .collect(Collectors.toList()));
         return result;
     }
 
@@ -151,18 +143,9 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
         try {
             final String action = getParameter(request, "action");
 
-            if (action.equals("classes")) {
-                final JSONArray result = getClasses().keySet().stream()
-                        .map(Try.onFunction(s -> {
-                            final JSONObject json = new JSONObject();
-                            json.put("value", s);
-                            json.put("label", s);
-                            return json;
-                        })).collect(JSONCollectors.toJSONArray());
-                result.write(response.getWriter());
-            } else if (action.equals("methods")) {
-                final String className = getParameter(request, "class");
-                final JSONArray result = getClasses().entrySet().stream()
+            if (action.equals("methods")) {
+                final String className = FormDataDaoImpl.class.getName();
+                final JSONArray result = getMethods().entrySet().stream()
                         .filter(e -> className.equals(e.getKey()))
                         .map(Map.Entry::getValue)
                         .flatMap(Collection::stream)
