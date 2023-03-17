@@ -1,0 +1,69 @@
+[
+  {
+    "title" : "@@startProcess.startProcessTool@@",
+    "properties" : [
+      {
+        "label": "@@startProcess.dataSource@@",
+        "type": "header"
+      },
+      {
+        "name" : "dataListId",
+        "label": "@@startProcess.dataList@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/datalist/options"
+      },
+      {
+        "name" : "dataListFilter",
+        "label": "@@startProcess.dataListFilter@@",
+        "type": "grid",
+        "columns" : [
+          {
+            "key": "name",
+            "label" : "@@startProcess.dataListFilter.name@@",
+            "required": "true"
+          },
+          {
+            "key" : "value",
+            "label" : "@@startProcess.dataListFilter.value@@"
+          }
+        ]
+      },
+      {
+          "label": "@@startProcess.processFlow@@",
+        "type": "header"
+      },
+      {
+        "name" : "processId",
+        "label" : "@@startProcess.processId@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/%s/service?action=processes"
+      },
+      {
+        "name" : "loginAs",
+        "label" : "@@startProcess.loginAs@@",
+        "type" : "textfield"
+      },
+      {
+        "name" : "workflowVariables",
+        "label" : "@@startProcess.workflowVariables@@",
+        "type" : "grid",
+        "columns" : [
+          {
+            "key" : "variable",
+            "label" : "@@startProcess.variable@@",
+            "required" : "true"
+          },
+          {
+            "key" : "value",
+            "label" : "@@startProcess.value@@"
+          },{
+            "key" : "field",
+            "label" : "@@startProcess.dataListField@@"
+          }
+        ]
+      }
+    ]
+  }
+]

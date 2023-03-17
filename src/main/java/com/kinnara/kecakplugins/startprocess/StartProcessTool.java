@@ -1,5 +1,6 @@
 package com.kinnara.kecakplugins.startprocess;
 
+import com.kinnara.kecakplugins.startprocess.commons.StartProcessUtils;
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.PackageDefinition;
@@ -24,7 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.*;
 
-public class StartProcessTool extends DefaultApplicationPlugin implements PluginWebSupport {
+public class StartProcessTool extends DefaultApplicationPlugin implements PluginWebSupport, StartProcessUtils {
     @Override
     public String getName() {
         return "Start Process Tool";
@@ -90,74 +91,5 @@ public class StartProcessTool extends DefaultApplicationPlugin implements Plugin
     @Override
     public String getPropertyOptions() {
         return AppUtil.readPluginResource(getClassName(), "/properties/StartProcessTool.json", new String[] {getClassName(), getClassName()}, false, "/messages/StartProcess");
-    }
-
-    @Override
-    public void webService(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        boolean isAdmin = WorkflowUtil.isCurrentUserInRole(WorkflowUserManager.ROLE_ADMIN);
-        if (!isAdmin) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        ApplicationContext ac = AppUtil.getApplicationContext();
-        AppService appService = (AppService) ac.getBean("appService");
-        AppDefinitionDao appDefinitionDao = (AppDefinitionDao) ac.getBean("appDefinitionDao");
-        WorkflowManager workflowManager = (WorkflowManager) ac.getBean("workflowManager");
-
-        String action = request.getParameter("action");
-
-        if ("apps".equalsIgnoreCase(action)) {
-            try {
-                JSONArray jsonArray = new JSONArray();
-
-                Map<String, String> empty = new HashMap<>();
-                empty.put("value", "");
-                empty.put("label", "");
-                jsonArray.put(empty);
-
-                Collection<AppDefinition> appList = appDefinitionDao.findPublishedApps(null, null, null, null);
-
-                for (AppDefinition app : appList) {
-                    Map<String, String> option = new HashMap<String, String>();
-                    option.put("value", app.getAppId());
-                    option.put("label", app.getName() + " v"+app.getVersion()+" (" + app.getAppId() + ")");
-                    jsonArray.put(option);
-                }
-
-                jsonArray.write(response.getWriter());
-
-            } catch (Exception ex) {
-                LogUtil.error(this.getClass().getName(), ex, "Get Run Process's options Error!");
-            }
-        } else if ("processes".equalsIgnoreCase(action)) {
-            String appId = request.getParameter("appId");
-            String appVersion = String.valueOf(appDefinitionDao.getPublishedVersion(appId));
-            try {
-                JSONArray jsonArray = new JSONArray();
-                AppDefinition appDef = appService.getAppDefinition(appId, appVersion);
-                PackageDefinition packageDefinition = appDef.getPackageDefinition();
-                Long packageVersion = (packageDefinition != null) ? packageDefinition.getVersion() : new Long(1);
-                Collection<WorkflowProcess> processList = workflowManager.getProcessList(appId, packageVersion.toString());
-
-                Map<String, String> empty = new HashMap<>();
-                empty.put("value", "");
-                empty.put("label", "");
-                jsonArray.put(empty);
-
-                for (WorkflowProcess p : processList) {
-                    Map<String, String> option = new HashMap<String, String>();
-                    option.put("value", p.getIdWithoutVersion());
-                    option.put("label", p.getName() + " (" + p.getIdWithoutVersion() + ")");
-                    jsonArray.put(option);
-                }
-
-                jsonArray.write(response.getWriter());
-            } catch (Exception ex) {
-                LogUtil.error(this.getClass().getName(), ex, "Get Run Process's options Error!");
-            }
-        } else {
-            response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-        }
     }
 }

@@ -1,0 +1,60 @@
+[
+  {
+    "title" : "@@startProcess.submitProcessFormTool@@",
+    "properties" : [
+      {
+        "type": "header",
+        "label": "@@startProcess.events@@"
+      },
+      {
+        "name" : "class",
+        "label" : "@@startProcess.class@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/%s/service?action=classes"
+      },
+      {
+        "name" : "methods",
+        "label" : "@@startProcess.methods@@",
+        "type" : "multiselect",
+        "required" : "true",
+        "options_ajax_on_change" : "class",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/%s/service?action=methods"
+      },
+      {
+        "type": "header",
+        "label": "@@startProcess.startProcess@@"
+      },
+      {
+        "name" : "processId",
+        "label" : "@@startProcess.processId@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/app[APP_PATH]/plugin/%s/service?action=processes"
+      },
+      {
+        "name" : "loginAs",
+        "label" : "@@startProcess.loginAs@@",
+        "type" : "textfield",
+        "required" : "true"
+      },
+      {
+        "name": "workflowVariables",
+        "label" : "@@startProcess.workflowVariables@@",
+        "type": "grid",
+        "columns": [
+          {
+            "key": "name",
+            "label": "@@startProcess.name@@",
+            "required": "true"
+          },
+          {
+            "key": "value",
+            "label": "@@startProcess.value@@",
+            "required": "true"
+          }
+        ]
+      }
+    ]
+  }
+]
