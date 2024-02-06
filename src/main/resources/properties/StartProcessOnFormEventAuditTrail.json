@@ -7,6 +7,13 @@
         "label": "@@startProcess.events@@"
       },
       {
+        "name" : "formDefId",
+        "label" : "@@startProcess.formDefId@@",
+        "type" : "multiselect",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
+      },
+      {
         "name" : "methods",
         "label" : "@@startProcess.methods@@",
         "type" : "multiselect",

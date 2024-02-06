@@ -35,6 +35,8 @@ import java.util.stream.Stream;
 public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin implements StartProcessUtils {
     public final static String LABEL = "Start Process On Form Event";
 
+    public final static Collection<Class> parametersSignature = Arrays.asList(new Class[]{String.class, String.class, FormRowSet.class});
+
     @Override
     public String getName() {
         return LABEL;
@@ -59,19 +61,38 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
         final String clazz = auditTrail.getClazz();
         final String method = auditTrail.getMethod();
-        final Set<String> methods = getPropertySet("methods");
+        final Collection<String> methods = getPropertySet("methods");
 
         if (FormDataDaoImpl.class.getName().equals(clazz) && methods.contains(method)) {
-            Arrays.stream(auditTrail.getArgs()).map(String::valueOf).forEach(s -> LogUtil.info(getClassName(), "args ["+s+"]"));
+            Arrays.stream(auditTrail.getArgs()).map(String::valueOf).forEach(s -> LogUtil.info(getClassName(), "args [" + s + "]"));
 
             try {
                 final AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
                 final PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
                 final WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
 
+                final Collection<String> formFilter = getFormDefId();
+
+                if (!formFilter.isEmpty()) {
+                    final Optional<String> optFormDefId = Optional.ofNullable(auditTrail.getArgs())
+                            .map(Arrays::stream)
+                            .orElseGet(Stream::empty)
+                            .findFirst()
+                            .filter(o -> o instanceof String)
+                            .map(String::valueOf);
+
+                    if (!optFormDefId.isPresent()) {
+                        throw new StartProcessException("Form is not defined in arguments [" + Arrays.toString(auditTrail.getArgs()) + "] filter [" + String.join(";", formFilter) + "]");
+                    }
+
+                    if (!formFilter.contains(optFormDefId.get())) {
+                        LogUtil.debug(getClassName(), "Skipping form [" + optFormDefId.get() + "]");
+                        return null;
+                    }
+                }
+
                 final String processDefId = AppUtil.getProcessDefIdWithVersion(packageDefinition.getAppId(), packageDefinition.getVersion().toString(), properties.get("processId").toString());
 
-                Arrays.stream(auditTrail.getParamTypes()).forEach(c -> LogUtil.info(getClassName(), "getParamTypes [" + c.getName() + "]"));
                 final String loginAs = getPropertyString("loginAs");
                 final Map<String, String> workflowVariables = Arrays.stream(getPropertyGrid("workflowVariables"))
                         .collect(Collectors.toMap(m -> m.get("name"), m -> {
@@ -182,5 +203,9 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                 .orElseGet(Stream::empty)
                 .map(o -> (Map<String, String>) o)
                 .toArray(Map[]::new);
+    }
+
+    protected Collection<String> getFormDefId() {
+        return getPropertySet("formDefId");
     }
 }
