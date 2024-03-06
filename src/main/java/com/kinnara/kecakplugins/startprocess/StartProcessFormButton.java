@@ -30,7 +30,7 @@ public class StartProcessFormButton extends LinkButton implements StartProcessUt
                     .map(WorkflowActivity::getId)
                     .orElse("");
 
-            Element element = FormUtil.findElement(getFieldFormProcessId(), form, formData);
+            Element element = FormUtil.findElement(getFieldFormProcessId(), form, formData, true);
             if(element != null) {
                 formData.addRequestParameterValues(FormUtil.getElementParameterName(element), new String[]{activityId});
             }

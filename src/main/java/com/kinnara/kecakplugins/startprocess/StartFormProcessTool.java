@@ -3,7 +3,6 @@ package com.kinnara.kecakplugins.startprocess;
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.PackageActivityForm;
-import org.joget.apps.app.service.AppPluginUtil;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Element;
@@ -70,7 +69,7 @@ public class StartFormProcessTool extends DefaultApplicationPlugin {
                     String field =  m.get("field").toString();
                     String value =  m.get("value").toString();
 
-                    Element element = FormUtil.findElement(field, form, new FormData());
+                    Element element = FormUtil.findElement(field, form, new FormData(), true);
                     if (element != null)
                         fd.addRequestParameterValues(FormUtil.getElementParameterName(element), new String[]{value});
 
