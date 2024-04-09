@@ -14,6 +14,7 @@ import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultAuditTrailPlugin;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.json.JSONArray;
@@ -61,6 +62,8 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
         final String clazz = auditTrail.getClazz();
         final String method = auditTrail.getMethod();
+
+        LogUtil.info(getClassName(), "execute : clazz [" + clazz + "] method [" + method + "]");
         final Collection<String> methods = getPropertySet("methods");
 
         if (FormDataDaoImpl.class.getName().equals(clazz) && methods.contains(method)) {
@@ -93,40 +96,56 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
                 final String processDefId = AppUtil.getProcessDefIdWithVersion(packageDefinition.getAppId(), packageDefinition.getVersion().toString(), properties.get("processId").toString());
 
+                final Class[] paramTypes = auditTrail.getParamTypes();
+                final Object[] args = auditTrail.getArgs();
+
+                final Optional<FormRow> optRow = optRow(paramTypes, args);
+
                 final String loginAs = getPropertyString("loginAs");
                 final Map<String, String> workflowVariables = Arrays.stream(getPropertyGrid("workflowVariables"))
-                        .collect(Collectors.toMap(m -> m.get("name"), m -> {
+                        .map(m -> {
+                            final String name = m.get("name");
                             final String field = m.getOrDefault("field", "");
+
+                            final String value;
                             if (field.isEmpty()) {
-                                final String value = m.get("value");
-                                return value;
+                                value = ifNull(m.get("value"), "");
+                            } else if (optRow.isPresent()) {
+                                value = ifNull(optRow.get().getProperty(field), "");
                             } else {
-                                for (int i = 0; i < auditTrail.getParamTypes().length; i++) {
-                                    final Class<?> type = auditTrail.getParamTypes()[i];
-                                    if (type == FormRowSet.class) {
-                                        final FormRowSet rowSet = (FormRowSet) auditTrail.getArgs()[i];
-                                        return Optional.ofNullable(rowSet)
-                                                .map(Collection::stream)
-                                                .orElseGet(Stream::empty)
-                                                .findFirst()
-                                                .map(r -> r.getProperty(field))
-                                                .orElse("");
-                                    } else if (type == FormRow.class) {
-                                        final FormRow row = (FormRow) auditTrail.getArgs()[i];
-                                        return Optional.ofNullable(row)
-                                                .map(r -> r.getProperty(field))
-                                                .orElse("");
-                                    }
-                                }
-
-                                return "";
+                                LogUtil.warn(getClassName(), "execute : argument is not found for field [" + field + "]");
+                                value = "";
                             }
-                        }));
 
+                            return new AbstractMap.SimpleEntry<String, String>(name, value);
+                        })
+                        .filter(e -> !e.getValue().isEmpty())
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (accept, ignored) -> accept));
+
+                final String wfVariableFormDefId = getPropertyString("wfVariableFormDefId");
+                if (!wfVariableFormDefId.isEmpty() && args.length > 0) {
+                    final String formDefId = String.valueOf(args[0]);
+                    LogUtil.debug(getClassName(), "execute : setting formId variable [" + wfVariableFormDefId + "] with [" + formDefId + "]");
+                    workflowVariables.put(wfVariableFormDefId, formDefId);
+                }
+
+                final String wfVariableFormTable = getPropertyString("wfVariableFormTable");
+                if (!wfVariableFormTable.isEmpty() && args.length > 1) {
+                    final String tableName = String.valueOf(args[1]);
+                    LogUtil.debug(getClassName(), "execute : setting table variable [" + wfVariableFormTable + "] with [" + tableName + "]");
+                    workflowVariables.put(wfVariableFormTable, tableName);
+                }
+
+                LogUtil.info(getClassName(), "execute : starting process [" + processDefId + "] variables [" + workflowVariables.entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")) + "] loginAs [" + loginAs + "]");
                 final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
+
                 if (result == null || result.getProcess() == null) {
                     throw new StartProcessException("Error starting process [" + processDefId + "]");
                 }
+
+                final WorkflowProcess process = result.getProcess();
+                LogUtil.info(getClassName(), "Process [" + process.getInstanceId() + "] has been started");
+
             } catch (StartProcessException e) {
                 LogUtil.error(getClassName(), e, e.getMessage());
             }
@@ -207,5 +226,29 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
     protected Collection<String> getFormDefId() {
         return getPropertySet("formDefId");
+    }
+
+    protected Optional<FormRow> optRow(Class[] types, Object[] args) {
+        for (int i = 0; i < types.length; i++) {
+            final Class<?> type = types[i];
+            final Object arg = args[i];
+
+            if (type == FormRowSet.class) {
+                final FormRowSet rowSet = (FormRowSet) arg;
+                return Optional.ofNullable(rowSet)
+                        .map(Collection::stream)
+                        .orElseGet(Stream::empty)
+                        .findFirst();
+            } else if (type == FormRow.class) {
+                final FormRow row = (FormRow) arg;
+                return Optional.ofNullable(row);
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    protected String ifNull(String value, String ifNull) {
+        return value == null ? ifNull : value;
     }
 }

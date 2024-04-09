@@ -50,6 +50,23 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
         return getClass().getPackage().getImplementationTitle();
     }
 
+    protected Set<String> getPropertySet(String name) {
+        return Optional.of(getPropertyString(name))
+                .map(s -> s.split(";"))
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .collect(Collectors.toSet());
+    }
+
+    protected Map<String, String>[] getPropertyGrid(String name) {
+        return Optional.ofNullable(getProperty(name))
+                .map(o -> (Object[]) o)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .map(o -> (Map<String, String>) o)
+                .toArray(Map[]::new);
+    }
+
     @Override
     public Object execute(Map properties) {
         final AuditTrail auditTrail = (AuditTrail) properties.get("auditTrail");
