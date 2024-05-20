@@ -136,15 +136,14 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                     workflowVariables.put(wfVariableFormTable, tableName);
                 }
 
-                LogUtil.info(getClassName(), "execute : starting process [" + processDefId + "] variables [" + workflowVariables.entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")) + "] loginAs [" + loginAs + "]");
-                final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
 
-                if (result == null || result.getProcess() == null) {
-                    throw new StartProcessException("Error starting process [" + processDefId + "]");
+                if(isAsynchronous()) {
+                    LogUtil.info(getClassName(), "Running start process in background");
+                    new Thread(Try.onRunnable(() -> processStart(processDefId, workflowVariables, loginAs)))
+                            .start();
+                } else {
+                    processStart(processDefId, workflowVariables, loginAs);
                 }
-
-                final WorkflowProcess process = result.getProcess();
-                LogUtil.info(getClassName(), "Process [" + process.getInstanceId() + "] has been started");
 
             } catch (StartProcessException e) {
                 LogUtil.error(getClassName(), e, e.getMessage());
@@ -250,5 +249,26 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
     protected String ifNull(String value, String ifNull) {
         return value == null ? ifNull : value;
+    }
+
+    protected WorkflowProcessResult processStart(String processDefId, Map<String, String> workflowVariables, String loginAs) throws StartProcessException {
+        final WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+
+        LogUtil.info(getClassName(), "execute : starting process [" + processDefId + "] variables [" + workflowVariables.entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")) + "] loginAs [" + loginAs + "]");
+
+        final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
+
+        if (result == null || result.getProcess() == null) {
+            throw new StartProcessException("Error starting process [" + processDefId + "]");
+        }
+
+        final WorkflowProcess process = result.getProcess();
+        LogUtil.info(getClassName(), "Process [" + process.getInstanceId() + "] has been started");
+
+        return result;
+    }
+
+    protected boolean isAsynchronous() {
+        return "true".equalsIgnoreCase(getPropertyString("asynchronous"));
     }
 }

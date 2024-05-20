@@ -56,5 +56,22 @@
         ]
       }
     ]
+  },
+  {
+    "title" : "@@startProcess.advance@@",
+    "properties" : [
+      {
+        "name": "asynchronous",
+        "label": "Asynchronous",
+        "type": "checkbox",
+        "value": "",
+        "options": [
+          {
+            "value": "true",
+            "label": ""
+          }
+        ]
+      }
+    ]
   }
 ]

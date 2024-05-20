@@ -78,7 +78,6 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
             try {
                 final AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
                 final PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
-                final WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
 
                 final String processDefId = AppUtil.getProcessDefIdWithVersion(packageDefinition.getAppId(), packageDefinition.getVersion().toString(), properties.get("processId").toString());
 
@@ -86,10 +85,13 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
                 final Map<String, String> workflowVariables = Arrays.stream(getPropertyGrid("workflowVariables"))
                         .collect(Collectors.toMap(m -> m.get("name"), m -> m.get("value")));
 
-                final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
-                if (result == null || result.getProcess() == null) {
-                    throw new StartProcessException("Error starting process [" + processDefId + "]");
+                if (isAsynchrounous()) {
+                    LogUtil.info(getClassName(), "Running start process in background");
+                    new Thread(Try.onRunnable(() -> processStart(processDefId, workflowVariables, loginAs))).start();
+                } else {
+                    processStart(processDefId, workflowVariables, loginAs);
                 }
+
             } catch (StartProcessException e) {
                 LogUtil.error(getClassName(), e, e.getMessage());
             }
@@ -196,5 +198,18 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
             LogUtil.error(getClassName(), e, e.getMessage());
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         }
+    }
+
+    protected boolean isAsynchrounous() {
+        return "true".equalsIgnoreCase(getPropertyString("asynchronous"));
+    }
+
+    protected WorkflowProcessResult processStart(String processDefId, Map<String, String> workflowVariables, String loginAs) throws StartProcessException {
+        final WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+        final WorkflowProcessResult result = workflowManager.processStart(processDefId, workflowVariables, loginAs);
+        if (result == null || result.getProcess() == null) {
+            throw new StartProcessException("Error starting process [" + processDefId + "]");
+        }
+        return result;
     }
 }
