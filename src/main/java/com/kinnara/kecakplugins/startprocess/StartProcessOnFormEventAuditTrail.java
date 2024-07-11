@@ -63,11 +63,16 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
         final String clazz = auditTrail.getClazz();
         final String method = auditTrail.getMethod();
 
-        LogUtil.info(getClassName(), "execute : clazz [" + clazz + "] method [" + method + "]");
+        if(isDebug()) {
+            LogUtil.info(getClassName(), "execute : clazz [" + clazz + "] method [" + method + "]");
+        }
+
         final Collection<String> methods = getPropertySet("methods");
 
         if (FormDataDaoImpl.class.getName().equals(clazz) && methods.contains(method)) {
-            Arrays.stream(auditTrail.getArgs()).map(String::valueOf).forEach(s -> LogUtil.info(getClassName(), "args [" + s + "]"));
+            if(isDebug()) {
+                Arrays.stream(auditTrail.getArgs()).map(String::valueOf).forEach(s -> LogUtil.info(getClassName(), "args [" + s + "]"));
+            }
 
             try {
                 final AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
@@ -270,5 +275,9 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
     protected boolean isAsynchronous() {
         return "true".equalsIgnoreCase(getPropertyString("asynchronous"));
+    }
+
+    protected boolean isDebug() {
+        return "true".equalsIgnoreCase(getPropertyString("debugMode"));
     }
 }

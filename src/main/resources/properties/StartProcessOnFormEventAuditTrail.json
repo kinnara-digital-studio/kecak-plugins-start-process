@@ -83,6 +83,18 @@
             "label": ""
           }
         ]
+      },
+      {
+        "name": "debugMode",
+        "label": "Debug Mode",
+        "type": "checkbox",
+        "value": "",
+        "options": [
+          {
+            "value": "true",
+            "label": ""
+          }
+        ]
       }
     ]
   }
