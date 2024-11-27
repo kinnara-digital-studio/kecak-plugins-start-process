@@ -1,7 +1,7 @@
-package com.kinnara.kecakplugins.startprocess;
+package com.kinnarastudio.kecakplugins.startprocess;
 
-import com.kinnara.kecakplugins.startprocess.commons.StartProcessException;
-import com.kinnara.kecakplugins.startprocess.commons.StartProcessUtils;
+import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessException;
+import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessUtils;
 import com.kinnarastudio.commons.Try;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.DataList;

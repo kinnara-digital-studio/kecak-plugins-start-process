@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.startprocess.commons;
+package com.kinnarastudio.kecakplugins.startprocess.commons;
 
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.dao.DatalistDefinitionDao;

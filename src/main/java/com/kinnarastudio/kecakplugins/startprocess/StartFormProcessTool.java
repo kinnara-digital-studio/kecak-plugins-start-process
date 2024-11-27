@@ -1,8 +1,11 @@
-package com.kinnara.kecakplugins.startprocess;
+package com.kinnarastudio.kecakplugins.startprocess;
 
+import com.kinnarastudio.commons.Try;
+import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessUtils;
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.PackageActivityForm;
+import org.joget.apps.app.model.PackageDefinition;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Element;
@@ -15,11 +18,13 @@ import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
+import org.kecak.apps.form.service.FormDataUtil;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class StartFormProcessTool extends DefaultApplicationPlugin {
+public class StartFormProcessTool extends DefaultApplicationPlugin implements StartProcessUtils {
     @Override
     public String getName() {
         return "Start Form Process Tool";
@@ -47,33 +52,44 @@ public class StartFormProcessTool extends DefaultApplicationPlugin {
         String appId = String.valueOf(map.get("appId"));
 
         Long appVersion = appDefinitionDao.getPublishedVersion(appId);
-        if(appVersion == null)
+        if (appVersion == null)
             appVersion = appDefinitionDao.getLatestVersion("appId");
 
         AppDefinition appDefinition = appDefinitionDao.loadVersion(appId, appVersion);
-        if(appDefinition == null) {
-            LogUtil.warn(getClassName(), "No Application Definition found for ID ["+appId+"] version ["+appVersion+"]");
+        if (appDefinition == null) {
+            LogUtil.warn(getClassName(), "No Application Definition found for ID [" + appId + "] version [" + appVersion + "]");
             return null;
         }
 
         // get processDefId
         String processDefId = appService.getWorkflowProcessForApp(appId, appVersion.toString(), map.get("processId").toString()).getId();
-        PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), processDefId, null, "");
+        PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
+        final FormData formData = new FormData();
+        PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), processDefId, formData, "");
 
-        Form form = packageActivityForm.getForm();
+        Optional<Form> optForm = Optional.of(packageActivityForm)
+                .map(PackageActivityForm::getFormId)
+                .map(Try.onFunction(this::generateForm));
 
-        final FormData formData = Arrays.stream(((Object[]) map.get("formFields")))
-                .map(o -> (Map<String, Object>)o)
-                .collect(FormData::new, (fd, m) -> {
+        if (optForm.isEmpty()) {
+            LogUtil.warn(getClassName(), "Error generating form for process [" + processDefId + "]");
+            return null;
+        }
+
+        Form form = optForm.get();
+
+        Arrays.stream(((Object[]) map.get("formFields")))
+                .map(o -> (Map<String, Object>) o)
+                .forEach(m -> {
                     // convert json to field data
-                    String field =  m.get("field").toString();
-                    String value =  m.get("value").toString();
+                    String field = m.get("field").toString();
+                    String value = m.get("value").toString();
 
                     Element element = FormUtil.findElement(field, form, new FormData(), true);
                     if (element != null)
-                        fd.addRequestParameterValues(FormUtil.getElementParameterName(element), new String[]{value});
+                        formData.addRequestParameterValues(FormUtil.getElementParameterName(element), new String[]{value});
 
-                }, (fd1, fd2) -> fd1.getRequestParams().putAll(fd2.getRequestParams()));
+                });
 
         formData.addRequestParameterValues(AssignmentCompleteButton.DEFAULT_ID, new String[]{"true"});
         formData.addRequestParameterValues(FormUtil.getElementParameterName(form) + "_SUBMITTED", new String[]{""});
@@ -83,9 +99,9 @@ public class StartFormProcessTool extends DefaultApplicationPlugin {
 
         WorkflowProcessResult processResult = appService.submitFormToStartProcess(appDefinition.getAppId(), appDefinition.getVersion().toString(), processDefId, formData, workflowVariables, null, null);
 
-        if(processResult == null || processResult.getProcess() == null) {
-            LogUtil.warn(getClassName(), "Error starting process ["+processDefId+"]");
-        } else if(!map.get("resultProcessId").toString().isEmpty()) {
+        if (processResult == null || processResult.getProcess() == null) {
+            LogUtil.warn(getClassName(), "Error starting process [" + processDefId + "]");
+        } else if (!map.get("resultProcessId").toString().isEmpty()) {
             workflowManager.processVariable(processResult.getProcess().getInstanceId(), map.get("resultProcessId").toString(), processResult.getProcess().getInstanceId());
         }
 
@@ -104,16 +120,17 @@ public class StartFormProcessTool extends DefaultApplicationPlugin {
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/StartFormProcess.json", new String[] {StartProcessTool.class.getName(), StartProcessTool.class.getName()}, false, "/messages/StartProcess");
+        return AppUtil.readPluginResource(getClassName(), "/properties/StartFormProcessTool.json", new String[]{StartProcessTool.class.getName(), StartProcessTool.class.getName()}, false, "/messages/StartProcess");
     }
 
-    private Map<String, String> generateWorkflowVariable(@Nonnull final Form form, @Nonnull final FormData formData) {
-        return formData.getRequestParams().entrySet().stream().collect(HashMap::new, (m, e) -> {
-            Element element = FormUtil.findElement(e.getKey(), form, formData, true);
-            String workflowVariable = element.getPropertyString("workflowVariable");
-
-            if(!Objects.isNull(workflowVariable) && !workflowVariable.isEmpty())
-                m.put(element.getPropertyString("workflowVariable"), String.join(";", e.getValue()));
-        }, Map::putAll);
+    @Override
+    @Nonnull
+    public Map<String, String> generateWorkflowVariable(@Nonnull final Form form, @Nonnull final FormData formData) {
+        return FormDataUtil.elementStream(form, formData)
+                .filter(e -> !e.getPropertyString("workflowVariable").isEmpty())
+                .collect(Collectors.toMap(e -> e.getPropertyString("workflowVariable"), e -> {
+                    final String parameterName = FormUtil.getElementParameterName(e);
+                    return formData.getRequestParameter(parameterName);
+                }));
     }
 }

@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.startprocess.commons;
+package com.kinnarastudio.kecakplugins.startprocess.commons;
 
 public class StartProcessException extends Exception {
     public StartProcessException(String message) {
