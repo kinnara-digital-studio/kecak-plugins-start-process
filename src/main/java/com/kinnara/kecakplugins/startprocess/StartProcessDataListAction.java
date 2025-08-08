@@ -77,7 +77,10 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
             @Nullable final Form form = generateForm(getFormDefId());
 
-            final DataListCollection<Map<String, String>> rows = dataList.getRows(Integer.MAX_VALUE, 0);
+            @Nonnull
+            final DataListCollection<Map<String, String>> rows = Optional.ofNullable(dataList.getRows(Integer.MAX_VALUE, 0))
+                            .orElseGet(DataListCollection<Map<String, String>>::new);
+
             rows.sort(Comparator.comparing(m -> m.get(dataList.getBinder().getPrimaryKeyColumnName())));
 
             if(isSingleProcess()) {
@@ -129,7 +132,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                         .sorted()
                         .distinct()
                         .map(Try.onFunction(key -> {
-                            final Map<String, Object> row = getRow(dataList, rows, key);
+                            final Map<String, String> row = getRow(dataList, rows, key);
                             final WorkflowProcessResult workflowProcessResult = startProcess(getProcessId(), getWorkflowVariables(row));
 
                             if (form != null) {
@@ -166,7 +169,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
     @Override
     public String getName() {
-        return getLabel() + getVersion();
+        return getLabel();
     }
 
     @Override
@@ -209,7 +212,7 @@ public class StartProcessDataListAction extends DataListActionDefault implements
         return getPropertyString("fieldToStoreProcessId");
     }
 
-    protected Map<String, String> getWorkflowVariables(Map<String, Object> row) {
+    protected Map<String, String> getWorkflowVariables(Map<String, String> row) {
         return Optional.of("workflowVariables")
                 .map(this::getProperty)
                 .map(o -> (Object[])o)
@@ -252,17 +255,17 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     }
 
     @Nonnull
-    protected Map<String, Object> getRow(DataList dataList, DataListCollection rows, String key) {
+    protected Map<String, String> getRow(DataList dataList, DataListCollection<Map<String, String>> rows, String key) {
         final String keyField = dataList.getBinder().getPrimaryKeyColumnName();
         return Optional.ofNullable(rows)
-                .map(DataListCollection<Map<String, Object>>::stream)
+                .map(DataListCollection::stream)
                 .orElseGet(Stream::empty)
                 .filter(row -> {
                     final String primaryKey = String.valueOf(row.get(keyField));
                     return key.equals(primaryKey);
                 })
                 .findFirst()
-                .orElseGet(HashMap::new);
+                .orElseGet(HashMap<String, String>::new);
     }
 
     protected boolean isSingleProcess() {
