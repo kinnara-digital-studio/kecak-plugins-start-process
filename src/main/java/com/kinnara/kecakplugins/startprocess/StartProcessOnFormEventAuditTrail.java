@@ -4,11 +4,13 @@ import com.kinnara.kecakplugins.startprocess.commons.StartProcessException;
 import com.kinnara.kecakplugins.startprocess.commons.StartProcessUtils;
 import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONCollectors;
+import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.AuditTrail;
 import org.joget.apps.app.model.PackageDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.dao.FormDataDaoImpl;
+import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
@@ -58,6 +60,7 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
     @Override
     public Object execute(Map properties) {
+        final AppDefinitionDao appDefinitionDao = (AppDefinitionDao) AppUtil.getApplicationContext().getBean("appDefinitionDao");
         final AuditTrail auditTrail = (AuditTrail) properties.get("auditTrail");
 
         final String clazz = auditTrail.getClazz();
@@ -75,19 +78,41 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
             }
 
             try {
-                final AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
+                final AppDefinition appDefinition;
+                if(usePublishedVersion()) {
+                    AppDefinition currentAppDefinition = AppUtil.getCurrentAppDefinition();
+                    long version = appDefinitionDao.getPublishedVersion(currentAppDefinition.getAppId());
+                    appDefinition = appDefinitionDao.loadVersion(currentAppDefinition.getAppId(), version);
+                } else {
+                    appDefinition = AppUtil.getCurrentAppDefinition();
+                }
+
                 final PackageDefinition packageDefinition = appDefinition.getPackageDefinition();
                 final WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
 
                 final Collection<String> formFilter = getFormDefId();
 
                 if (!formFilter.isEmpty()) {
-                    final Optional<String> optFormDefId = Optional.ofNullable(auditTrail.getArgs())
-                            .map(Arrays::stream)
-                            .orElseGet(Stream::empty)
-                            .findFirst()
-                            .filter(o -> o instanceof String)
-                            .map(String::valueOf);
+                    Object[] args = auditTrail.getArgs();
+                    final Optional<String> optFormDefId;
+                    if(args.length == 3) {
+                        optFormDefId = Optional.of(args)
+                                .map(Arrays::stream)
+                                .orElseGet(Stream::empty)
+                                .findFirst()
+                                .filter(o -> o instanceof String)
+                                .map(String::valueOf);
+                    } else if (args.length == 2){
+                        optFormDefId = Optional.of(args)
+                                .map(Arrays::stream)
+                                .orElseGet(Stream::empty)
+                                .findFirst()
+                                .filter(o -> o instanceof Form)
+                                .map(f -> ((Form) f).getPropertyString("id"))
+                                .map(String::valueOf);
+                    } else {
+                        optFormDefId = Optional.empty();
+                    }
 
                     if (!optFormDefId.isPresent()) {
                         throw new StartProcessException("Form is not defined in arguments [" + Arrays.toString(auditTrail.getArgs()) + "] filter [" + String.join(";", formFilter) + "]");
@@ -279,5 +304,9 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
 
     protected boolean isDebug() {
         return "true".equalsIgnoreCase(getPropertyString("debugMode"));
+    }
+
+    protected boolean usePublishedVersion() {
+        return "true".equalsIgnoreCase(getPropertyString("usePublishedVersion"));
     }
 }

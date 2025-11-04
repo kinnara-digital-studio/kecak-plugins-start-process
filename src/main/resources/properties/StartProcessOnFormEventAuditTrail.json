@@ -73,6 +73,18 @@
     "title" : "@@startProcess.advance@@",
     "properties" : [
       {
+        "name": "usePublishedVersion",
+        "label": "Use Published Version",
+        "type": "checkbox",
+        "value": "",
+        "options": [
+          {
+            "value": "true",
+            "label": ""
+          }
+        ]
+      },
+      {
         "name": "asynchronous",
         "label": "Asynchronous",
         "type": "checkbox",
