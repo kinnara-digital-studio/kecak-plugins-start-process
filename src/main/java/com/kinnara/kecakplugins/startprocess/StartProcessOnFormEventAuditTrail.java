@@ -28,6 +28,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,7 +39,13 @@ import java.util.stream.Stream;
 public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin implements StartProcessUtils {
     public final static String LABEL = "Start Process On Form Event";
 
-    public final static Collection<Class> parametersSignature = Arrays.asList(new Class[]{String.class, String.class, FormRowSet.class});
+    private final static Collection<Class> parametersSignature = Arrays.asList(new Class[]{String.class, String.class, FormRowSet.class});
+
+    private final static Collection<String> FILTER_METHODS = new HashSet<String>() {{
+        add("loadWithoutTransaction");
+        add("saveOrUpdate");
+        add("updateSchema");
+    }};
 
     @Override
     public String getName() {
@@ -95,14 +102,14 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                 if (!formFilter.isEmpty()) {
                     Object[] args = auditTrail.getArgs();
                     final Optional<String> optFormDefId;
-                    if(args.length == 3) {
+                    if (args.length == 3) {
                         optFormDefId = Optional.of(args)
                                 .map(Arrays::stream)
                                 .orElseGet(Stream::empty)
                                 .findFirst()
                                 .filter(o -> o instanceof String)
                                 .map(String::valueOf);
-                    } else if (args.length == 2){
+                    } else if (args.length == 2) {
                         optFormDefId = Optional.of(args)
                                 .map(Arrays::stream)
                                 .orElseGet(Stream::empty)
@@ -147,6 +154,7 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                                 value = "";
                             }
 
+                            LogUtil.info(getClassName(), "name [" + name + "] field [" + field + "] value [" + value + "]");
                             return new AbstractMap.SimpleEntry<String, String>(name, value);
                         })
                         .filter(e -> !e.getValue().isEmpty())
@@ -167,7 +175,7 @@ public class StartProcessOnFormEventAuditTrail extends DefaultAuditTrailPlugin i
                 }
 
 
-                if(isAsynchronous()) {
+                if (isAsynchronous()) {
                     LogUtil.info(getClassName(), "Running start process in background");
                     new Thread(Try.onRunnable(() -> processStart(processDefId, workflowVariables, loginAs)))
                             .start();
