@@ -7,7 +7,7 @@ import com.kinnarastudio.kecakplugins.startprocess.app.StartProcessOnEventAuditT
 import com.kinnarastudio.kecakplugins.startprocess.app.StartProcessOnFormEventAuditTrail;
 import com.kinnarastudio.kecakplugins.startprocess.app.StartProcessScheduler;
 import com.kinnarastudio.kecakplugins.startprocess.datalist.StartProcessDataListAction;
-import com.kinnarastudio.kecakplugins.startprocess.datalist.StartProcessDuplicateAction;
+import com.kinnarastudio.kecakplugins.startprocess.datalist.DuplicateRowDataListAction;
 import com.kinnarastudio.kecakplugins.startprocess.form.StartProcessFormButton;
 import com.kinnarastudio.kecakplugins.startprocess.process.DataListStartProcessTool;
 import com.kinnarastudio.kecakplugins.startprocess.process.StartFormProcessTool;
@@ -28,7 +28,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(StartFormProcessTool.class.getName(), new StartFormProcessTool(), null));
         registrationList.add(context.registerService(StartProcessScheduler.class.getName(), new StartProcessScheduler(), null));
         registrationList.add(context.registerService(StartProcessDataListAction.class.getName(), new StartProcessDataListAction(), null));
-        registrationList.add(context.registerService(StartProcessDuplicateAction.class.getName(), new StartProcessDuplicateAction(), null));
+        registrationList.add(context.registerService(DuplicateRowDataListAction.class.getName(), new DuplicateRowDataListAction(), null));
         registrationList.add(context.registerService(StartProcessFormButton.class.getName(), new StartProcessFormButton(), null));
         registrationList.add(context.registerService(DataListStartProcessTool.class.getName(), new DataListStartProcessTool(), null));
         registrationList.add(context.registerService(StartProcessOnEventAuditTrail.class.getName(), new StartProcessOnEventAuditTrail(), null));

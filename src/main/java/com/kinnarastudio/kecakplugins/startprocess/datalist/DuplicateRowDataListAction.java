@@ -8,22 +8,24 @@ import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListActionDefault;
 import org.joget.apps.datalist.model.DataListActionResult;
 import org.joget.apps.form.model.FormData;
+import org.joget.apps.form.model.FormRow;
+import org.joget.apps.form.model.FormRowSet;
+import org.joget.apps.workflow.lib.AssignmentCompleteButton;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
-import org.kecak.apps.exception.ApiException;
 import org.springframework.context.ApplicationContext;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.*;
 
-public class StartProcessDuplicateAction extends DataListActionDefault {
-    public final static String LABEL = "Start Process Duplicate Action";
+public class DuplicateRowDataListAction extends DataListActionDefault {
+    public final static String LABEL = "Duplicate";
 
     @Override
     public String getLinkLabel() {
@@ -73,7 +75,7 @@ public class StartProcessDuplicateAction extends DataListActionDefault {
         AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
 
         String username = WorkflowUtil.getCurrentUsername();
-        Optional.ofNullable(rowKeys)
+        WorkflowProcessResult workflowProcessResult = Optional.ofNullable(rowKeys)
                 .stream()
                 .flatMap(Arrays::stream)
                 .filter(Objects::nonNull)
@@ -82,32 +84,30 @@ public class StartProcessDuplicateAction extends DataListActionDefault {
                 .map(WorkflowAssignment::getProcessDefId)
                 .filter(Objects::nonNull)
                 .findFirst()
-                .ifPresent(pid -> {
+                .map(pid -> {
                     FormData formData = new FormData();
+                    formData.addRequestParameterValues(AssignmentCompleteButton.DEFAULT_ID, new String[]{AssignmentCompleteButton.DEFAULT_ID});
 
                     Map<String, String> workflowVariables = new HashMap<>();
 
                     PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), pid,  formData, "");
-                    if(packageActivityForm == null) return;
+                    if(packageActivityForm == null) return null;
 
                     final String appId = packageActivityForm.getPackageDefinition().getAppDefinition().getAppId();
                     final String appVersion = packageActivityForm.getPackageDefinition().getAppDefinition().getVersion().toString();
                     final String processDefId = packageActivityForm.getProcessDefId();
+                    return appService.submitFormToStartProcess(appId, appVersion, packageActivityForm, processDefId, formData, workflowVariables, null);
+                })
+                .orElse(null);
 
-                    WorkflowProcessResult processResult = appService.submitFormToStartProcess(appId, appVersion, packageActivityForm, processDefId, formData, workflowVariables, null);
-                    if(processResult == null) return;
+        String primaryKey = workflowProcessResult.getProcess().getRecordId();
 
-                    WorkflowProcess resultProcess = processResult.getProcess();
-                    if(resultProcess == null) return;
 
-                    String recordId = resultProcess.getRecordId();
-                    if(recordId == null) return;
-
-                    LogUtil.info(getClassName(), "New process has been started");
-                });
 
         final DataListActionResult result = new DataListActionResult();
-        result.setType(DataListActionResult.TYPE_REDIRECT);;
+        result.setType(DataListActionResult.TYPE_REDIRECT);
+        result.setUrl("REFERER");
+
         return result;
     }
 
@@ -136,7 +136,7 @@ public class StartProcessDuplicateAction extends DataListActionDefault {
 
     @Override
     public String getClassName() {
-        return StartProcessDuplicateAction.class.getName();
+        return DuplicateRowDataListAction.class.getName();
     }
 
     @Override
