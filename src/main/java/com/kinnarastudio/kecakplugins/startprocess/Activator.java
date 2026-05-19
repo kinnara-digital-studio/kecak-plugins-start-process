@@ -2,6 +2,16 @@ package com.kinnarastudio.kecakplugins.startprocess;
 
 import java.util.ArrayList;
 import java.util.Collection;
+
+import com.kinnarastudio.kecakplugins.startprocess.app.StartProcessOnEventAuditTrail;
+import com.kinnarastudio.kecakplugins.startprocess.app.StartProcessOnFormEventAuditTrail;
+import com.kinnarastudio.kecakplugins.startprocess.app.StartProcessScheduler;
+import com.kinnarastudio.kecakplugins.startprocess.datalist.StartProcessDataListAction;
+import com.kinnarastudio.kecakplugins.startprocess.datalist.StartProcessDuplicateAction;
+import com.kinnarastudio.kecakplugins.startprocess.form.StartProcessFormButton;
+import com.kinnarastudio.kecakplugins.startprocess.process.DataListStartProcessTool;
+import com.kinnarastudio.kecakplugins.startprocess.process.StartFormProcessTool;
+import com.kinnarastudio.kecakplugins.startprocess.process.StartProcessTool;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
@@ -18,6 +28,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(StartFormProcessTool.class.getName(), new StartFormProcessTool(), null));
         registrationList.add(context.registerService(StartProcessScheduler.class.getName(), new StartProcessScheduler(), null));
         registrationList.add(context.registerService(StartProcessDataListAction.class.getName(), new StartProcessDataListAction(), null));
+        registrationList.add(context.registerService(StartProcessDuplicateAction.class.getName(), new StartProcessDuplicateAction(), null));
         registrationList.add(context.registerService(StartProcessFormButton.class.getName(), new StartProcessFormButton(), null));
         registrationList.add(context.registerService(DataListStartProcessTool.class.getName(), new DataListStartProcessTool(), null));
         registrationList.add(context.registerService(StartProcessOnEventAuditTrail.class.getName(), new StartProcessOnEventAuditTrail(), null));

@@ -176,8 +176,7 @@ public interface StartProcessUtils extends PluginWebSupport {
 //            Map<String, String> workflowVariables = generateWorkflowVariable(form, formData);
 
             // trigger run process
-            WorkflowProcessResult processResult = appService.submitFormToStartProcess(packageActivityForm, formData, workflowVariables, null);
-            return Optional.ofNullable(processResult).orElseThrow(() -> {
+            WorkflowProcessResult processResult = appService.submitFormToStartProcess(appDefinition.getAppId(), appDefinition.getVersion().toString(), packageActivityForm, processDefId, formData, workflowVariables, null);            return Optional.ofNullable(processResult).orElseThrow(() -> {
                 String message = Optional.of(formData)
                         .map(FormData::getFormErrors)
                         .map(Map::entrySet)

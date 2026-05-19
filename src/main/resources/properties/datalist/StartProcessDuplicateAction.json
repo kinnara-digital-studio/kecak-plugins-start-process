@@ -1,0 +1,19 @@
+[
+  {
+    "title": "@@startProcessDuplicate.dataListAction@@",
+    "properties": [
+      {
+        "name" : "label",
+        "label" : "@@datalist.hyperlinkdatalistaction.label@@",
+        "type" : "textfield",
+        "description" : "@@datalist.hyperlinkdatalistaction.label.desc@@",
+        "value" : "Start"
+      },
+      {
+        "label" : "@@datalist.hyperlinkdatalistaction.confirmationMessage@@",
+        "name" : "confirmation",
+        "type" : "textfield"
+      }
+    ]
+  }
+]

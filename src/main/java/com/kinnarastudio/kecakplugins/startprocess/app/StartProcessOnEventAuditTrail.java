@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.startprocess;
+package com.kinnarastudio.kecakplugins.startprocess.app;
 
 import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessException;
 import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessUtils;
@@ -55,7 +55,7 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
         final AuditTrail auditTrail = (AuditTrail) properties.get("auditTrail");
 
         final String clazz = getPropertyString("class");
-        final Set<String> methods = getPropertySet("methods");
+        final Set<String> methods = getMethods();
 
         if (clazz.equals(auditTrail.getClazz()) && methods.contains(auditTrail.getMethod())) {
             try {
@@ -179,5 +179,15 @@ public class StartProcessOnEventAuditTrail extends DefaultAuditTrailPlugin imple
             LogUtil.error(getClassName(), e, e.getMessage());
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         }
+    }
+
+    protected Set<String> getMethods() {
+        return Optional.of("methods")
+                .map(this::getPropertyString)
+                .map(s -> s.split(";"))
+                .stream()
+                .flatMap(Arrays::stream)
+                .collect(Collectors.toSet());
+
     }
 }

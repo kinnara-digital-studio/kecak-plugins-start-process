@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.startprocess;
+package com.kinnarastudio.kecakplugins.startprocess.datalist;
 
 import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessException;
 import com.kinnarastudio.kecakplugins.startprocess.commons.StartProcessUtils;
@@ -21,7 +21,6 @@ import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author aristo
@@ -83,8 +82,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
             if(isSingleProcess()) {
                 // collect and combine workflow variables using ; delimiter
                 final Map<String, String> workflowVariables = Optional.ofNullable(rowKeys)
-                        .map(Arrays::stream)
-                        .orElseGet(Stream::empty)
+                        .stream()
+                        .flatMap(Arrays::stream)
                         .sorted()
                         .distinct()
                         .map(key -> getRow(dataList, rows, key))
@@ -100,8 +99,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                                 .orElseThrow(() -> new StartProcessException("Error starting process [" + getProcessId() + "]"));
 
                 Optional.ofNullable(rowKeys)
-                        .map(Arrays::stream)
-                        .orElseGet(Stream::empty)
+                        .stream()
+                        .flatMap(Arrays::stream)
                         .sorted()
                         .distinct()
                         .forEach(key -> updateFormField(form, key, getFieldFormProcessId(), instanceId));
@@ -111,8 +110,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
                 final String url = Optional.of(workflowProcessResult)
                         .map(WorkflowProcessResult::getActivities)
-                        .map(Collection::stream)
-                        .orElseGet(Stream::empty)
+                        .stream()
+                        .flatMap(Collection::stream)
                         .filter(Objects::nonNull)
                         .findFirst()
                         .map(WorkflowActivity::getId)
@@ -124,8 +123,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
                 return result;
             } else {
                 final Set<DataListActionResult> results = Optional.ofNullable(rowKeys)
-                        .map(Arrays::stream)
-                        .orElseGet(Stream::empty)
+                        .stream()
+                        .flatMap(Arrays::stream)
                         .sorted()
                         .distinct()
                         .map(Try.onFunction(key -> {
@@ -141,8 +140,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
 
                             final String url = Optional.of(workflowProcessResult)
                                     .map(WorkflowProcessResult::getActivities)
-                                    .map(Collection::stream)
-                                    .orElseGet(Stream::empty)
+                                    .stream()
+                                    .flatMap(Collection::stream)
                                     .filter(Objects::nonNull)
                                     .findFirst()
                                     .map(WorkflowActivity::getId)
@@ -212,9 +211,9 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     protected Map<String, String> getWorkflowVariables(Map<String, Object> row) {
         return Optional.of("workflowVariables")
                 .map(this::getProperty)
-                .map(o -> (Object[])o)
-                .map(Arrays::stream)
-                .orElseGet(Stream::empty)
+                .map(o -> (Object[]) o)
+                .stream()
+                .flatMap(Arrays::stream)
                 .map(o -> (Map<String, Object>)o)
                 .collect(Collectors.toMap(m -> AppUtil.processHashVariable(String.valueOf(m.get("name")), null, null, null), m -> {
                     final String field = String.valueOf(m.get("field"));
@@ -255,8 +254,8 @@ public class StartProcessDataListAction extends DataListActionDefault implements
     protected Map<String, Object> getRow(DataList dataList, DataListCollection rows, String key) {
         final String keyField = dataList.getBinder().getPrimaryKeyColumnName();
         return Optional.ofNullable(rows)
-                .map(DataListCollection<Map<String, Object>>::stream)
-                .orElseGet(Stream::empty)
+                .stream()
+                .flatMap(Collection<Map<String, Object>>::stream)
                 .filter(row -> {
                     final String primaryKey = String.valueOf(row.get(keyField));
                     return key.equals(primaryKey);

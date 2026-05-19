@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.startprocess;
+package com.kinnarastudio.kecakplugins.startprocess.app;
 
 import org.joget.apps.app.dao.AppDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
