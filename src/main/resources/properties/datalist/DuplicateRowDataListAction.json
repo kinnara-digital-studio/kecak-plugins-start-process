@@ -37,6 +37,16 @@
             "label" : ""
           }
         ]
+      },
+      {
+        "name" : "formDefId",
+        "label" : "@@startProcess.formDefId@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "control_field" : "startNewProcess",
+        "control_value" : "^(?!true$).*$",
+        "control_use_regex": "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
       }
     ]
   }

@@ -78,30 +78,38 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
                 .map(keys -> keys[0])
                 .orElse("");
 
-        Optional<WorkflowProcess> optionalWorkflowProcess = optProcessByRecordId(originalKey);
-        String processDefId = optionalWorkflowProcess
+
+        final FormData originalFormData = new FormData() {{
+            setPrimaryKeyValue(originalKey);
+        }};
+
+        final FormData newFormData = new FormData() {{
+            addRequestParameterValues(AssignmentCompleteButton.DEFAULT_ID, new String[]{AssignmentCompleteButton.DEFAULT_ID});
+        }};
+
+        final Optional<WorkflowProcess> optWorkflowProcess = optProcessByRecordId(originalKey);
+        final String processDefId = optWorkflowProcess
                 .map(WorkflowProcess::getId)
                 .orElse("");
-
-        FormData originalFormData = new FormData();
-
-        Map<String, String> workflowVariables = new HashMap<>();
-
         final String appId = appDefinition.getAppId();
         final String appVersion = appDefinition.getVersion().toString();
+        final PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appId, appVersion, processDefId, originalFormData, "");
 
-        PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appId, appVersion, processDefId, originalFormData, "");
-        if (packageActivityForm == null) return null;
+        final boolean startNewProcess = startNewProcess() && optWorkflowProcess.isPresent();
 
-        String processId = packageActivityForm.getProcessDefId();
-        originalFormData.setPrimaryKeyValue(originalKey);
+        @Nullable final Form form;
+        if (startNewProcess) {
+            form = Optional.ofNullable(packageActivityForm).map(PackageActivityForm::getForm).orElse(null);
+        } else if (getFormDefId() != null && !getFormDefId().isEmpty()) {
+            form = appService.viewDataForm(appId, appVersion, getFormDefId(), null, null, null, originalFormData, null, null);
+        } else {
+            form = null;
+        }
 
-        Form form = packageActivityForm.getForm();
+        if(form == null) throw new UnsupportedOperationException("No form found to duplicate data");
+
         FormUtil.executeLoadBinders(form, originalFormData);
         FormRowSet originalRowSet = originalFormData.getLoadBinderData(form);
-
-        FormData newFormData = new FormData();
-        newFormData.addRequestParameterValues(AssignmentCompleteButton.DEFAULT_ID, new String[]{AssignmentCompleteButton.DEFAULT_ID});
 
         Set<String> ignores = new HashSet<>() {{
             add(FormUtil.PROPERTY_ID);
@@ -111,6 +119,8 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
             add(FormUtil.PROPERTY_MODIFIED_BY);
             add(FormUtil.PROPERTY_DELETED);
         }};
+
+        final Map<String, String> workflowVariables = new HashMap<>();
 
         Optional.ofNullable(originalRowSet)
                 .stream()
@@ -122,13 +132,16 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
                 .flatMap(Collection<Map.Entry<String, String>>::stream)
                 .filter(e -> e.getKey() != null && !ignores.contains(e.getKey()))
                 .forEach(e -> {
-                    String fieldName = e.getKey();
+                    final String fieldName = e.getKey();
+                    final String value = e.getValue();
 
-                    Element element = FormUtil.findElement(fieldName, form, newFormData);
+                    final Element element = FormUtil.findElement(fieldName, form, newFormData);
                     if (element == null) return;
 
-                    String parameterName = FormUtil.getElementParameterName(element);
-                    String value = e.getValue();
+                    final String workflowVariable = element.getPropertyString("workflowVariable");
+                    workflowVariables.put(workflowVariable, value);
+
+                    final String parameterName = FormUtil.getElementParameterName(element);
                     newFormData.addRequestParameterValues(parameterName, new String[]{value});
 
                     if (generateChildren()) {
@@ -152,25 +165,23 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
                     }
                 });
 
-
-        if (startNewProcess()) {
+        if (startNewProcess) {
+            final String processId = packageActivityForm.getProcessDefId();
             WorkflowAssignment workflowAssignment = Optional.ofNullable(appService.submitFormToStartProcess(appId, appVersion, packageActivityForm, processId, newFormData, workflowVariables, null))
                     .map(WorkflowProcessResult::getProcess)
                     .map(WorkflowProcess::getInstanceId)
                     .map(workflowManager::getAssignmentByProcess)
                     .orElse(null);
-
-
             LogUtil.info(getClassName(), "New assignment [" + workflowAssignment.getActivityId() + "]");
-
         } else {
             FormData formData = appService.submitForm(form, newFormData, true);
             LogUtil.info(getClassName(), "New record [" + formData.getPrimaryKeyValue() + "]");
         }
 
+
         final DataListActionResult result = new DataListActionResult();
         result.setType(DataListActionResult.TYPE_REDIRECT);
-        result.setUrl("REFERER");
+        result.setUrl("?");
 
         return result;
     }
@@ -238,5 +249,9 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
 
     protected boolean startNewProcess() {
         return "true".equalsIgnoreCase(getPropertyString("startNewProcess"));
+    }
+
+    protected String getFormDefId() {
+        return getPropertyString("formDefId");
     }
 }
