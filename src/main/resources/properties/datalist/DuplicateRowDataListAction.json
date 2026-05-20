@@ -1,0 +1,43 @@
+[
+  {
+    "title": "@@startProcess.duplicateRow.title@@",
+    "properties": [
+      {
+        "name" : "label",
+        "label" : "@@datalist.hyperlinkdatalistaction.label@@",
+        "type" : "textfield",
+        "description" : "@@datalist.hyperlinkdatalistaction.label.desc@@",
+        "value" : "Start"
+      },
+      {
+        "label" : "@@datalist.hyperlinkdatalistaction.confirmationMessage@@",
+        "name" : "confirmation",
+        "type" : "textfield"
+      },
+      {
+        "label" : "Generate children rows",
+        "name" : "generateChildren",
+         "type" : "checkbox",
+         "value" : "",
+         "options" : [
+           {
+             "value" : "true",
+             "label" : ""
+           }
+         ]
+      },
+      {
+        "label" : "Trigger new process",
+        "name" : "startNewProcess",
+        "type" : "checkbox",
+        "value" : "",
+        "options" : [
+          {
+            "value" : "true",
+            "label" : ""
+          }
+        ]
+      }
+    ]
+  }
+]

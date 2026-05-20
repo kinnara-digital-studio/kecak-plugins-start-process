@@ -7,13 +7,11 @@ import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListActionDefault;
 import org.joget.apps.datalist.model.DataListActionResult;
-import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormRow;
-import org.joget.apps.form.model.FormRowSet;
+import org.joget.apps.form.model.*;
+import org.joget.apps.form.service.FormUtil;
 import org.joget.apps.workflow.lib.AssignmentCompleteButton;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
-import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.WorkflowProcess;
 import org.joget.workflow.model.WorkflowProcessResult;
@@ -21,6 +19,7 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.context.ApplicationContext;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 
@@ -69,55 +68,111 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
         }
 
         ApplicationContext applicationContext = AppUtil.getApplicationContext();
-        WorkflowManager workflowManager = (WorkflowManager) applicationContext.getBean("workflowManager");
-        PluginManager pluginManager = (PluginManager) applicationContext.getBean("pluginManager");
         AppService appService = (AppService) applicationContext.getBean("appService");
+        WorkflowManager workflowManager = (WorkflowManager) applicationContext.getBean("workflowManager");
+
         AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
 
-        String username = WorkflowUtil.getCurrentUsername();
-        WorkflowProcessResult workflowProcessResult = Optional.ofNullable(rowKeys)
+        String originalKey = Optional.ofNullable(rowKeys)
+                .filter(keys -> keys.length > 0)
+                .map(keys -> keys[0])
+                .orElse("");
+
+        Optional<WorkflowProcess> optionalWorkflowProcess = optProcessByRecordId(originalKey);
+        String processDefId = optionalWorkflowProcess
+                .map(WorkflowProcess::getId)
+                .orElse("");
+
+        FormData originalFormData = new FormData();
+
+        Map<String, String> workflowVariables = new HashMap<>();
+
+        final String appId = appDefinition.getAppId();
+        final String appVersion = appDefinition.getVersion().toString();
+
+        PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appId, appVersion, processDefId, originalFormData, "");
+        if (packageActivityForm == null) return null;
+
+        String processId = packageActivityForm.getProcessDefId();
+        originalFormData.setPrimaryKeyValue(originalKey);
+
+        Form form = packageActivityForm.getForm();
+        FormUtil.executeLoadBinders(form, originalFormData);
+        FormRowSet originalRowSet = originalFormData.getLoadBinderData(form);
+
+        FormData newFormData = new FormData();
+        newFormData.addRequestParameterValues(AssignmentCompleteButton.DEFAULT_ID, new String[]{AssignmentCompleteButton.DEFAULT_ID});
+
+        Set<String> ignores = new HashSet<>() {{
+            add(FormUtil.PROPERTY_ID);
+            add(FormUtil.PROPERTY_DATE_CREATED);
+            add(FormUtil.PROPERTY_DATE_MODIFIED);
+            add(FormUtil.PROPERTY_CREATED_BY);
+            add(FormUtil.PROPERTY_MODIFIED_BY);
+            add(FormUtil.PROPERTY_DELETED);
+        }};
+
+        Optional.ofNullable(originalRowSet)
                 .stream()
-                .flatMap(Arrays::stream)
-                .filter(Objects::nonNull)
-                .map(s -> workflowManager.getAssignmentByRecordId(s, null, null, username))
-                .filter(Objects::nonNull)
-                .map(WorkflowAssignment::getProcessDefId)
-                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
                 .findFirst()
-                .map(pid -> {
-                    FormData formData = new FormData();
-                    formData.addRequestParameterValues(AssignmentCompleteButton.DEFAULT_ID, new String[]{AssignmentCompleteButton.DEFAULT_ID});
+                .map(FormRow::getCustomProperties)
+                .map(Map::entrySet)
+                .stream()
+                .flatMap(Collection<Map.Entry<String, String>>::stream)
+                .filter(e -> e.getKey() != null && !ignores.contains(e.getKey()))
+                .forEach(e -> {
+                    String fieldName = e.getKey();
 
-                    Map<String, String> workflowVariables = new HashMap<>();
+                    Element element = FormUtil.findElement(fieldName, form, newFormData);
+                    if (element == null) return;
 
-                    PackageActivityForm packageActivityForm = appService.viewStartProcessForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), pid,  formData, "");
-                    if(packageActivityForm == null) return null;
+                    String parameterName = FormUtil.getElementParameterName(element);
+                    String value = e.getValue();
+                    newFormData.addRequestParameterValues(parameterName, new String[]{value});
 
-                    final String appId = packageActivityForm.getPackageDefinition().getAppDefinition().getAppId();
-                    final String appVersion = packageActivityForm.getPackageDefinition().getAppDefinition().getVersion().toString();
-                    final String processDefId = packageActivityForm.getProcessDefId();
-                    return appService.submitFormToStartProcess(appId, appVersion, packageActivityForm, processDefId, formData, workflowVariables, null);
-                })
-                .orElse(null);
+                    if (generateChildren()) {
+                        FormLoadBinder loadBinder = element.getLoadBinder();
+                        FormStoreBinder storeBinder = element.getStoreBinder();
 
-        String primaryKey = getRecordId(workflowProcessResult);
+                        if (storeBinder != null) {
+                            FormRowSet storeBinderValues;
+                            if (loadBinder != null) {
+                                storeBinderValues = originalFormData.getLoadBinderData(element);
+                            } else {
+                                storeBinderValues = new FormRowSet() {{
+                                    add(new FormRow() {{
+                                        setProperty(fieldName, value);
+                                    }});
+                                }};
+                            }
+
+                            newFormData.setStoreBinderData(storeBinder, storeBinderValues);
+                        }
+                    }
+                });
+
+
+        if (startNewProcess()) {
+            WorkflowAssignment workflowAssignment = Optional.ofNullable(appService.submitFormToStartProcess(appId, appVersion, packageActivityForm, processId, newFormData, workflowVariables, null))
+                    .map(WorkflowProcessResult::getProcess)
+                    .map(WorkflowProcess::getInstanceId)
+                    .map(workflowManager::getAssignmentByProcess)
+                    .orElse(null);
+
+
+            LogUtil.info(getClassName(), "New assignment [" + workflowAssignment.getActivityId() + "]");
+
+        } else {
+            FormData formData = appService.submitForm(form, newFormData, true);
+            LogUtil.info(getClassName(), "New record [" + formData.getPrimaryKeyValue() + "]");
+        }
 
         final DataListActionResult result = new DataListActionResult();
         result.setType(DataListActionResult.TYPE_REDIRECT);
         result.setUrl("REFERER");
 
         return result;
-    }
-
-    protected String getRecordId(WorkflowProcessResult workflowProcessResult) {
-        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
-
-        return Optional.ofNullable(workflowProcessResult)
-                .map(WorkflowProcessResult::getProcess)
-                .map(WorkflowProcess::getInstanceId)
-                .map(workflowManager::getRunningProcessById)
-                .map(WorkflowProcess::getRecordId)
-                .orElse("");
     }
 
     @Override
@@ -150,11 +205,38 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClass().getName(), "/properties/datalist/StartProcessDuplicateAction.json", null, true, "messages/StartProcessDuplicateAction");
+        return AppUtil.readPluginResource(getClass().getName(), "/properties/datalist/DuplicateRowDataListAction.json", null, true, "messages/StartProcess");
     }
 
     @Override
     public Boolean supportList() {
         return false;
+    }
+
+    protected Optional<WorkflowProcess> optProcessByRecordId(final String recordId) {
+        assert recordId != null;
+
+        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+
+        @Nullable
+        WorkflowProcess workflowProcess = Optional.ofNullable(workflowManager.getRunningProcessList(null, null, null, null, recordId, null, null, null, 0, 1))
+                .stream()
+                .flatMap(Collection::stream)
+                .findFirst()
+                .orElseGet(() -> Optional.ofNullable(workflowManager.getCompletedProcessList(null, null, null, null, recordId, null, null, null, 0, 1))
+                        .stream()
+                        .flatMap(Collection::stream)
+                        .findFirst()
+                        .orElse(null));
+
+        return Optional.ofNullable(workflowProcess);
+    }
+
+    protected boolean generateChildren() {
+        return "true".equalsIgnoreCase(getPropertyString("generateChildren"));
+    }
+
+    protected boolean startNewProcess() {
+        return "true".equalsIgnoreCase(getPropertyString("startNewProcess"));
     }
 }
