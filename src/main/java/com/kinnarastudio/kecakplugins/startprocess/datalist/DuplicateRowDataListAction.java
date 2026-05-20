@@ -100,15 +100,24 @@ public class DuplicateRowDataListAction extends DataListActionDefault {
                 })
                 .orElse(null);
 
-        String primaryKey = workflowProcessResult.getProcess().getRecordId();
-
-
+        String primaryKey = getRecordId(workflowProcessResult);
 
         final DataListActionResult result = new DataListActionResult();
         result.setType(DataListActionResult.TYPE_REDIRECT);
         result.setUrl("REFERER");
 
         return result;
+    }
+
+    protected String getRecordId(WorkflowProcessResult workflowProcessResult) {
+        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+
+        return Optional.ofNullable(workflowProcessResult)
+                .map(WorkflowProcessResult::getProcess)
+                .map(WorkflowProcess::getInstanceId)
+                .map(workflowManager::getRunningProcessById)
+                .map(WorkflowProcess::getRecordId)
+                .orElse("");
     }
 
     @Override
